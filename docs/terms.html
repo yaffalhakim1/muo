@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms, Muo</title>
+<meta name="description" content="The MIT licence Muo ships under, in plain terms.">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --bg-soft: #f6f6f4; --line: #e5e5e1;
+  --ink: #0a0a0a; --ink-2: #666666; --ink-3: #8f8f8c; --accent: #35577a;
+  --font: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+body { margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a { color: var(--accent); text-underline-offset: 3px; transition: color 700ms var(--ease); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+header { padding: 24px 0; }
+.mark { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: var(--ink); text-decoration: none; }
+.mark img { width: 24px; height: 24px; border-radius: 6px; }
+main { padding: 48px 0 96px; }
+h1 { font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; margin: 0 0 24px; }
+h2 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; margin: 48px 0 16px; }
+p { font-size: 18px; line-height: 28px; color: var(--ink-2); text-wrap: pretty; margin: 0 0 16px; }
+.lede { font-size: 20px; line-height: 28px; }
+pre { font-family: var(--mono); font-size: 14px; line-height: 24px; background: var(--bg-soft); padding: 24px; border-radius: 16px; overflow-x: auto; color: var(--ink-2); }
+footer { padding: 48px 0; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; line-height: 20px; color: var(--ink-3); }
+footer a { color: var(--ink-2); text-decoration: none; }
+footer a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="mark" href="index.html"><img src="icon.png" alt="" width="24" height="24">Muo</a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Terms</h1>
+    <p class="lede">Muo is free software under the MIT licence. That licence is the entire agreement, and it grants you more than most terms pages do.</p>
+
+    <h2>What you may do</h2>
+    <p>Use it, copy it, modify it, merge it, publish it, distribute it, sublicense it and sell it. Commercially or not. There is no seat limit and no restriction on where you run it.</p>
+
+    <h2>What you must keep</h2>
+    <p>The copyright notice and the permission notice, in any copy or substantial portion you distribute.</p>
+
+    <h2>What is not promised</h2>
+    <p>The software comes as is, with no warranty of any kind, express or implied, including merchantability, fitness for a particular purpose and non infringement. The authors are not liable for any claim, damage or other liability arising from the software or its use.</p>
+
+    <h2>The full text</h2>
+    <pre>MIT License
+
+Copyright (c) 2026 Muhammad Yafi Alhakim
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+
+    <h2>Updates</h2>
+    <p>The app checks for updates only when you ask it to, and installs one only after verifying its signature against the public key in the app's configuration. An update that does not match is refused.</p>
+
+    <h2>Third party work</h2>
+    <p>Muo is built on <a href="https://github.com/egoist/mygo">MyGo</a>, which is MIT licensed. The full dependency list is in <code>go.mod</code> in the repository.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="index.html">Muo</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="https://github.com/yaffalhakim1/muo">Source</a>
+    <span>MIT licensed</span>
+  </div>
+</footer>
+
+</body>
+</html>

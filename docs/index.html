@@ -3,262 +3,564 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Muo, a reader that sizes type from where you sit</title>
-<meta name="description" content="Muo sets the type size from your screen and your viewing distance, then holds the line at 72 characters. A native markdown reader for macOS and Windows.">
+<title>Muo, a markdown reader that sizes type from where you sit</title>
+<meta name="description" content="Muo solves the type size from your screen's density and how far you sit from it, then holds every line at 72 characters. A markdown reader for macOS and Windows.">
+<link rel="canonical" href="https://yaffalhakim1.github.io/muo/">
+<meta name="theme-color" content="#ffffff">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Muo, a markdown reader that sizes type from where you sit">
+<meta property="og:description" content="Type solved from your screen's density and your viewing distance. Every line held at 72 characters.">
+<meta property="og:url" content="https://yaffalhakim1.github.io/muo/">
+<meta property="og:image" content="https://yaffalhakim1.github.io/muo/og.png">
+<meta name="twitter:card" content="summary_large_image">
+
 <link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Muo",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "macOS, Windows, Linux",
+  "description": "A markdown reader that solves the type size from the screen's density and the reader's viewing distance, and holds every line at 72 characters.",
+  "url": "https://yaffalhakim1.github.io/muo/",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://github.com/yaffalhakim1/muo/blob/main/LICENSE"
+}
+</script>
+
 <style>
+/* ---------------------------------------------------------------------------
+   Tokens. Every size, space and radius below comes from one of three tables in
+   the design system: the type scale, the spacing table, and Tailwind's radii.
+   Nothing here is invented.
+   --------------------------------------------------------------------------- */
 :root {
-  --paper: #faf8f5;
-  --chrome: #f3f0ea;
-  --raised: #eae6de;
-  --border: #e3ddd3;
-  --ink: #1f1d1b;
-  --muted: #6a635b;
-  --accent: #3a5a7d;
+  /* Surfaces. Flat, never a gradient. */
+  --bg: #ffffff;
+  --bg-soft: #f6f6f4;
+  --bg-sink: #efefec;
+  --line: #e5e5e1;
+  --line-strong: #d3d3ce;
+
+  /* Ink. The hero gradient runs from --ink to --ink-2, which is the only
+     gradient on the page. */
+  --ink: #0a0a0a;
+  --ink-2: #666666;
+  --ink-3: #8f8f8c;
+
+  /* One accent, carried over from the app so the page and the window agree. */
+  --accent: #35577a;
+  --accent-ink: #ffffff;
   --good: #2f7d4f;
   --near: #8a5d0e;
 
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
-  --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+  /* Type. One family, Geist, with Geist Mono for code and figures. */
+  --font: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #1a1a1c;
-    --chrome: #151517;
-    --raised: #242428;
-    --border: #34343a;
-    --ink: #cdc8c2;
-    --muted: #928c85;
-    --accent: #7aa3cc;
-    --good: #63bd89;
-    --near: #d9a441;
-  }
+  /* Motion. One curve, per the fluid dynamics rule. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
-  font: 400 17px/1.55 var(--font);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  /* Reduced motion means gentler, not zero: colour and opacity stay, movement
-     goes. Nothing here moves anyway, but the rule is stated so a later addition
-     inherits it rather than rediscovering it. */
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  text-rendering: optimizeLegibility;
 }
 
 body { margin: 0; }
 
+img { display: block; max-width: 100%; height: auto; }
+
+h1, h2, h3, p, figure, ul, ol, dl, dd { margin: 0; }
+
+ul, ol { padding: 0; list-style: none; }
+
+/* Focus is visible everywhere, and only for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.skip {
+  position: absolute;
+  left: 24px;
+  top: -100px;
+  z-index: 100;
+  background: var(--ink);
+  color: var(--bg);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 700ms var(--ease);
+}
+.skip:focus { top: 24px; }
+
 .wrap {
-  max-width: 1080px;
+  width: 100%;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 0 24px;
 }
 
-a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-thickness 120ms var(--ease-out); }
-a:hover { text-decoration-thickness: 2px; }
-
-/* ---------- top bar ---------- */
-
-.bar {
-  position: sticky;
+/* ---------------------------------------------------------------------------
+   The island nav. A floating glass pill, detached from the top edge, that
+   expands into a full screen overlay. The hamburger morphs into an X rather
+   than vanishing.
+   --------------------------------------------------------------------------- */
+.island {
+  position: fixed;
   top: 0;
-  z-index: 10;
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.island-bar {
+  pointer-events: auto;
+  margin-top: 24px;
+  width: max-content;
+  max-width: calc(100% - 48px);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 8px 8px 24px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.72);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04), 0 8px 28px -12px rgb(0 0 0 / 0.18);
+  transition: background 700ms var(--ease), box-shadow 700ms var(--ease);
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  .bar { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-
-.bar-inner {
+.island-mark {
   display: flex;
   align-items: center;
-  gap: 20px;
-  height: 52px;
-}
-
-.mark {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 15px;
+  gap: 8px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  margin-right: auto;
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.mark img {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  display: block;
+.island-mark img { width: 24px; height: 24px; border-radius: 6px; }
+
+.island-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.mark span { color: var(--muted); font-weight: 400; margin-left: 2px; }
-
-.bar a.plain {
-  color: var(--muted);
+.island-links a {
+  color: var(--ink-2);
   text-decoration: none;
   font-size: 14px;
-  transition: color 120ms var(--ease-out);
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  transition: color 700ms var(--ease), background 700ms var(--ease);
 }
 
-.bar a.plain:hover { color: var(--ink); }
+.island-links a:hover { color: var(--ink); background: var(--bg-soft); }
 
-/* ---------- hero ---------- */
+.island-links a[aria-current="page"] { color: var(--ink); }
 
-.hero { padding: 88px 0 24px; }
+.island-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 700ms var(--ease), background 700ms var(--ease);
+}
+
+.island-cta:hover { background: #262626; }
+.island-cta:active { transform: scale(0.98); }
+
+/* The hamburger. Two lines that rotate into an X. */
+.burger {
+  display: none;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.burger span {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 1.5px;
+  background: var(--ink);
+  border-radius: 1px;
+  transition: transform 700ms var(--ease), opacity 700ms var(--ease);
+}
+
+.burger span:nth-child(1) { transform: translateY(-4px); }
+.burger span:nth-child(2) { transform: translateY(4px); }
+
+.burger[aria-expanded="true"] span:nth-child(1) { transform: rotate(45deg); }
+.burger[aria-expanded="true"] span:nth-child(2) { transform: rotate(-45deg); }
+
+/* The overlay. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(255 255 255 / 0.86);
+  backdrop-filter: blur(48px) saturate(160%);
+  -webkit-backdrop-filter: blur(48px) saturate(160%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 700ms var(--ease), visibility 700ms var(--ease);
+}
+
+.sheet[data-open="true"] { opacity: 1; visibility: visible; }
+
+.sheet nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sheet a {
+  display: block;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  transform: translateY(48px);
+  opacity: 0;
+  transition: transform 700ms var(--ease), opacity 700ms var(--ease), color 700ms var(--ease);
+}
+
+.sheet[data-open="true"] a { transform: translateY(0); opacity: 1; }
+
+.sheet[data-open="true"] a:nth-child(1) { transition-delay: 100ms; }
+.sheet[data-open="true"] a:nth-child(2) { transition-delay: 150ms; }
+.sheet[data-open="true"] a:nth-child(3) { transition-delay: 200ms; }
+.sheet[data-open="true"] a:nth-child(4) { transition-delay: 250ms; }
+.sheet[data-open="true"] a:nth-child(5) { transition-delay: 300ms; }
+
+@media (max-width: 860px) {
+  .island-links, .island-cta { display: none; }
+  .burger { display: inline-flex; }
+  .island-bar { padding: 8px 8px 8px 16px; gap: 8px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Hero
+   --------------------------------------------------------------------------- */
+.hero {
+  padding: 160px 0 96px;
+  background: var(--bg);
+}
 
 .eyebrow {
-  font: 600 11px/1 var(--font);
-  letter-spacing: 0.09em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 20px;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+}
+
+.eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--good);
 }
 
 h1 {
-  font-size: clamp(34px, 5.2vw, 56px);
-  line-height: 1.04;
-  letter-spacing: -0.028em;
-  font-weight: 650;
-  margin: 0 0 22px;
-  max-width: 15ch;
+  max-width: 680px;
+  font-size: 60px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  background: linear-gradient(90deg, var(--ink), var(--ink-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 24px;
 }
 
-.lede {
-  font-size: clamp(17px, 2.1vw, 20px);
-  line-height: 1.5;
-  color: var(--muted);
-  max-width: 52ch;
-  margin: 0 0 40px;
+.hero-sub {
+  max-width: 680px;
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  margin-bottom: 40px;
 }
 
-.lede strong { color: var(--ink); font-weight: 600; }
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
 
-/* ---------- the specimen ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+  transition: transform 700ms var(--ease), background 700ms var(--ease), box-shadow 700ms var(--ease);
+}
 
-.specimen {
-  border: 1px solid var(--border);
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.06), 0 8px 24px -12px rgb(0 0 0 / 0.4);
+}
+
+.btn-primary:hover { background: #262626; }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-quiet {
+  background: transparent;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.btn-quiet:hover { color: var(--ink); background: var(--bg-soft); }
+.btn-quiet:active { transform: scale(0.98); }
+
+.btn svg { width: 20px; height: 20px; flex: none; }
+
+.hero-proof {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-3);
+}
+
+.hero-proof b {
+  color: var(--ink-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+}
+
+.hero-shot {
+  margin-top: 64px;
   border-radius: 16px;
-  background: var(--paper);
   overflow: hidden;
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04), 0 40px 80px -40px rgb(0 0 0 / 0.35);
+}
+
+/* ---------------------------------------------------------------------------
+   The tagline reveal. Words start muted and take the full ink colour one at a
+   time as they cross the trigger line.
+   --------------------------------------------------------------------------- */
+.tagline {
+  padding: 96px 0;
+  background: var(--bg-soft);
+}
+
+.tagline p {
+  max-width: 680px;
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.tagline .w {
+  color: var(--ink);
+  opacity: 0.28;
+  transition: opacity 700ms var(--ease);
+}
+
+.tagline .w.on { opacity: 1; }
+
+/* ---------------------------------------------------------------------------
+   Sections
+   --------------------------------------------------------------------------- */
+.section { padding: 96px 0; background: var(--bg); }
+.section.soft { background: var(--bg-soft); }
+
+.section-head { max-width: 680px; margin-bottom: 48px; }
+
+.section-head h2 {
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
   margin-bottom: 16px;
 }
 
-.specimen-head {
+.section-head p {
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.lede { font-size: 20px; line-height: 28px; color: var(--ink-2); max-width: 680px; text-wrap: pretty; }
+
+/* Reveal on scroll. Heavy and slow, never a snap. */
+.reveal {
+  transform: translateY(64px);
+  filter: blur(8px);
+  opacity: 0;
+  transition: transform 800ms var(--ease), filter 800ms var(--ease), opacity 800ms var(--ease);
+}
+
+.reveal.on { transform: translateY(0); filter: blur(0); opacity: 1; }
+
+/* ---------------------------------------------------------------------------
+   The specimen. The one interactive thing on the page, because it is the
+   proof of the claim rather than decoration.
+   --------------------------------------------------------------------------- */
+.specimen {
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04), 0 24px 48px -32px rgb(0 0 0 / 0.3);
+  overflow: hidden;
+}
+
+.specimen-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--chrome);
+  gap: 16px;
   flex-wrap: wrap;
+  padding: 12px 24px;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--line);
 }
 
-.gauge {
-  position: relative;
-  width: 58px;
-  height: 11px;
-  flex: none;
-}
+.gauge { position: relative; width: 64px; height: 12px; flex: none; }
 
-.gauge-track {
+.gauge-track, .gauge-band {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 3.5px;
+  top: 4px;
   height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 9999px;
 }
 
-/* The comfortable band, placed by the same 0.18–0.46 span the marker uses:
-   0.26° is 28.6% along, 0.38° is 71.4%. */
-.gauge-band {
-  position: absolute;
-  left: 28.6%;
-  right: 28.6%;
-  top: 3.5px;
-  height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 34%, transparent);
-}
+.gauge-track { left: 0; right: 0; background: var(--bg-sink); }
+.gauge-band { left: 28.6%; right: 28.6%; background: var(--line-strong); }
 
 .gauge-mark {
   position: absolute;
   top: 0;
   left: 0;
   width: 3px;
-  height: 11px;
-  border-radius: 1.5px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--good);
   will-change: transform;
-  transition: background-color 200ms var(--ease-out);
+  transition: background 700ms var(--ease);
 }
-
-.gauge-mark[data-grade="good"] { background: var(--good); }
-.gauge-mark[data-grade="near"] { background: var(--near); }
 
 .readout {
-  font: 400 11px/1 var(--font);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  color: var(--muted);
-}
-
-.readout .angle { transition: color 200ms var(--ease-out); }
-.readout .angle[data-grade="good"] { color: var(--good); }
-.readout .angle[data-grade="near"] { color: var(--near); }
-
-.spacer { flex: 1 1 auto; }
-
-.dial {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-family: var(--mono);
   font-size: 12px;
-  color: var(--muted);
+  line-height: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
 }
 
-.dial label { font-size: 12px; }
+.readout .angle { color: var(--good); transition: color 700ms var(--ease); }
+
+.specimen-bar .spacer { flex: 1 1 auto; }
+
+.dial { display: flex; align-items: center; gap: 12px; }
+
+.dial label { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink-2); }
+
+.dial output {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  min-width: 56px;
+  text-align: right;
+}
 
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  width: clamp(110px, 22vw, 190px);
-  height: 20px;
+  width: 160px;
+  height: 24px;
   background: transparent;
   cursor: ew-resize;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 16%, transparent);
+  border-radius: 9999px;
+  background: var(--line-strong);
 }
 
 input[type="range"]::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 16%, transparent);
+  border-radius: 9999px;
+  background: var(--line-strong);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -266,238 +568,385 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px;
   height: 16px;
   margin-top: -6px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
-  transition: transform 160ms var(--ease-out);
+  transition: transform 700ms var(--ease);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
 }
 
 input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.94); }
+input[type="range"]:active::-moz-range-thumb { transform: scale(0.94); }
 
-.specimen-body {
-  padding: 30px 32px 34px;
-}
+.specimen-body { padding: 40px; }
 
-.specimen-text {
-  margin: 0;
+#specimen {
   max-width: 34em;
   line-height: 1.58;
+  text-wrap: pretty;
+  transition: font-size 40ms linear, max-width 40ms linear;
 }
 
-.specimen-text + .specimen-text { margin-top: 1em; }
-
-.hint {
-  font-size: 13px;
-  color: var(--muted);
-  margin: 0;
+.specimen-note {
+  padding: 0 40px 40px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-3);
+  text-wrap: pretty;
 }
 
-/* ---------- sections ---------- */
-
-section { padding: 72px 0; }
-
-h2 {
-  font-size: clamp(24px, 3.2vw, 32px);
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-  font-weight: 640;
-  margin: 0 0 14px;
-  max-width: 22ch;
-}
-
-h2 + p {
-  font-size: 17px;
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 60ch;
-  margin: 0 0 32px;
-}
-
-h2 + p strong { color: var(--ink); font-weight: 600; }
-
-/* ---------- the measure strip ---------- */
-
-.measure {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px 32px;
-  background: var(--chrome);
-}
-
-.measure-line {
-  font-size: 17px;
-  line-height: 1.58;
-  margin: 0 0 18px;
-  max-width: 72ch;
-}
-
-.measure-ruler {
-  position: relative;
-  height: 26px;
-  border-top: 1px solid var(--border);
-  margin-top: 4px;
-}
-
-.measure-tick {
-  position: absolute;
-  top: 0;
-  width: 1px;
-  height: 8px;
-  background: var(--border);
-}
-
-.measure-tick.major { height: 13px; background: var(--muted); }
-
-.measure-num {
-  position: absolute;
-  top: 15px;
-  font: 400 10px/1 var(--font);
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  transform: translateX(-50%);
-}
-
-.measure-count {
-  font: 600 11px/1 var(--font);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 14px;
-}
-
-/* ---------- screenshots ---------- */
-
-.shots {
+/* ---------------------------------------------------------------------------
+   Benefits, three columns of outcomes.
+   --------------------------------------------------------------------------- */
+.grid-3 {
   display: grid;
-  gap: 18px;
+  gap: 24px;
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 760px) {
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.card {
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04), 0 16px 32px -24px rgb(0 0 0 / 0.24);
+}
+
+.section.soft .card { background: var(--bg); }
+
+.card .icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-soft);
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.section.soft .card .icon { background: var(--bg-soft); }
+
+.card .icon svg { width: 20px; height: 20px; }
+
+.card h3 {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+  text-wrap: balance;
+}
+
+.card p {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* ---------------------------------------------------------------------------
+   How it works, three numbered steps.
+   --------------------------------------------------------------------------- */
+.steps { display: grid; gap: 24px; grid-template-columns: 1fr; }
+
+@media (min-width: 760px) {
+  .steps { grid-template-columns: repeat(3, 1fr); }
+}
+
+.step { padding-top: 24px; border-top: 1px solid var(--line-strong); }
+
+.step .n {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+  display: block;
+}
+
+.step h3 { font-size: 18px; line-height: 28px; font-weight: 600; margin-bottom: 8px; }
+.step p { font-size: 16px; line-height: 24px; color: var(--ink-2); text-wrap: pretty; }
+
+/* ---------------------------------------------------------------------------
+   Proof. Screenshots beside the numbers they support.
+   --------------------------------------------------------------------------- */
+.shots { display: grid; gap: 24px; grid-template-columns: 1fr; }
+
+@media (min-width: 860px) {
   .shots { grid-template-columns: 1fr 1fr; }
   .shots .wide { grid-column: 1 / -1; }
 }
 
-figure {
-  margin: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+.shot {
+  border-radius: 16px;
   overflow: hidden;
-  background: var(--chrome);
+  box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.04), 0 24px 48px -32px rgb(0 0 0 / 0.3);
+  background: var(--bg-soft);
 }
 
-figure img { display: block; width: 100%; height: auto; }
-
-figcaption {
-  font-size: 12.5px;
-  color: var(--muted);
-  padding: 11px 14px;
-  border-top: 1px solid var(--border);
-}
-
-/* ---------- two column list ---------- */
-
-.pairs {
-  display: grid;
-  gap: 28px 48px;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 720px) {
-  .pairs { grid-template-columns: 1fr 1fr; }
-}
-
-.pair h3 {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  margin: 0 0 6px;
-}
-
-.pair p {
-  font-size: 15px;
-  line-height: 1.58;
-  color: var(--muted);
-  margin: 0;
-}
-
-/* ---------- footer ---------- */
-
-footer {
-  border-top: 1px solid var(--border);
-  padding: 40px 0 64px;
-  margin-top: 24px;
-}
-
-.foot {
-  display: flex;
-  gap: 18px;
-  align-items: baseline;
-  flex-wrap: wrap;
+.shot figcaption {
   font-size: 14px;
-  color: var(--muted);
+  line-height: 20px;
+  color: var(--ink-2);
+  padding: 16px 24px;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
 }
 
-.foot .spacer { flex: 1 1 auto; }
+.stats {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 48px;
+}
 
-code {
-  font: 400 0.9em/1 var(--mono);
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
+@media (min-width: 760px) {
+  .stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+.stat { padding-top: 16px; border-top: 1px solid var(--line-strong); }
+
+.stat b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.stat span { font-size: 14px; line-height: 20px; color: var(--ink-2); }
+
+/* ---------------------------------------------------------------------------
+   FAQ. Native details, styled.
+   --------------------------------------------------------------------------- */
+.faq { max-width: 800px; }
+
+.faq details { border-bottom: 1px solid var(--line); }
+
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0;
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  text-wrap: balance;
+  transition: color 700ms var(--ease);
+}
+
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:hover { color: var(--accent); }
+
+.faq summary .chev {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-3);
+  transition: transform 700ms var(--ease);
+}
+
+.faq details[open] summary .chev { transform: rotate(45deg); }
+
+.faq .answer {
+  padding: 0 0 24px;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--ink-2);
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+.faq .answer p + p { margin-top: 12px; }
+
+.faq code {
+  font-family: var(--mono);
+  font-size: 14px;
+  background: var(--bg-soft);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-pre {
-  font: 400 13px/1.6 var(--mono);
-  background: var(--chrome);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px 18px;
-  overflow-x: auto;
-  margin: 0 0 20px;
+/* ---------------------------------------------------------------------------
+   Final call, and the footer.
+   --------------------------------------------------------------------------- */
+.final { padding: 96px 0; background: var(--bg-soft); }
+
+.final h2 {
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  max-width: 680px;
+  text-wrap: balance;
+  margin-bottom: 16px;
 }
 
-pre code { background: none; padding: 0; font-size: inherit; }
+.final p {
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--ink-2);
+  max-width: 680px;
+  text-wrap: pretty;
+  margin-bottom: 32px;
+}
+
+.footer {
+  padding: 64px 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.footer-inner {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-3);
+}
+
+.footer-inner a { color: var(--ink-2); text-decoration: none; transition: color 700ms var(--ease); }
+.footer-inner a:hover { color: var(--ink); }
+.footer-inner .spacer { flex: 1 1 auto; }
+
+@media (max-width: 640px) {
+  .hero { padding: 120px 0 64px; }
+  h1 { font-size: 48px; }
+  .tagline p { font-size: 36px; line-height: 40px; }
+  .section, .tagline, .final { padding: 64px 0; }
+  .specimen-body { padding: 24px; }
+  .specimen-note { padding: 0 24px 24px; }
+}
+
+/* Reduced motion means gentler, not zero: colour and opacity stay, movement and
+   blur go. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .reveal { transform: none; filter: none; }
+  .sheet a { transform: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .island-bar, .sheet {
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
 </style>
 </head>
 <body>
 
-<header class="bar">
-  <div class="wrap bar-inner">
-    <div class="mark">
-      <img src="icon.png" alt="" width="22" height="22">
-      Muo<span>a reader</span>
-    </div>    <a class="plain" href="#measure">The measure</a>
-    <a class="plain" href="#inside">Inside</a>
-    <a class="plain" href="#install">Install</a>
-    <a class="plain" href="https://github.com/yaffalhakim1/muo">GitHub</a>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- The island nav -->
+<div class="island">
+  <div class="island-bar">
+    <a class="island-mark" href="index.html">
+      <img src="icon.png" alt="" width="24" height="24">
+      Muo
+    </a>
+    <nav class="island-links" aria-label="Sections">
+      <a href="#measure">The measure</a>
+      <a href="#inside">Inside</a>
+      <a href="#questions">Questions</a>
+    </nav>
+    <a class="island-cta" href="#download">Download</a>
+    <button class="burger" aria-expanded="false" aria-controls="sheet" aria-label="Open menu">
+      <span></span>
+      <span></span>
+    </button>
   </div>
-</header>
+</div>
 
-<main>
+<div class="sheet" id="sheet" data-open="false" hidden>
+  <nav aria-label="Sections">
+    <a href="#measure">The measure</a>
+    <a href="#inside">Inside</a>
+    <a href="#questions">Questions</a>
+    <a href="#download">Download</a>
+    <a href="https://github.com/yaffalhakim1/muo">Source</a>
+  </nav>
+</div>
 
+<main id="main">
+
+<!-- Hero -->
 <section class="hero">
   <div class="wrap">
-    <p class="eyebrow">Markdown reader for macOS and Windows</p>
-    <h1>Type sized from where you sit.</h1>
-    <p class="lede">
-      A point size means nothing on its own. What your eye sees is the angle a letter
-      covers, and that depends on how far the screen is and how many pixels it packs
-      into an inch. Muo measures both and solves for the size.
+    <p class="eyebrow"><span class="dot" aria-hidden="true"></span>Markdown reader for macOS and Windows</p>
+    <h1>Read for hours without your eyes paying for it</h1>
+    <p class="hero-sub">
+      Muo solves the type size from your screen's density and how far you sit from it,
+      then holds every line at 72 characters. Change the size and the measure stays put.
     </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#download">
+        <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M224 152v56a16 16 0 0 1-16 16H48a16 16 0 0 1-16-16v-56"/><path d="M128 24v128"/><path d="m88 112 40 40 40-40"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn btn-quiet" href="https://github.com/yaffalhakim1/muo">Read the source</a>
+    </div>
+    <p class="hero-proof">
+      <span><b>6,686</b> lines of Go</span>
+      <span><b>99</b> tests</span>
+      <span><b>1</b> dependency</span>
+      <span>Free, MIT licensed</span>
+    </p>
+    <div class="hero-shot">
+      <img src="shots/reading-light.png" alt="Muo with a document open. Three panes: a library of files on the left, the reading column in the middle, and the page outline on the right." width="1440" height="860" fetchpriority="high">
+    </div>
+  </div>
+</section>
 
-    <div class="specimen">
-      <div class="specimen-head">
+<!-- The tagline reveal -->
+<section class="tagline" aria-label="The idea">
+  <div class="wrap">
+    <p id="tagline">Change the size of the type and the line stays the same length. The measure is the promise.</p>
+  </div>
+</section>
+
+<!-- The problem -->
+<section class="section" id="measure">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>A pixel width looks stable and quietly is not</h2>
+      <p>
+        Cap a column at 640 pixels and it holds on the screen you designed it for.
+        Change the type size, or open the file on a laptop, and the character count
+        moves with it. The reader re-reads lines without noticing, and blames the writing.
+      </p>
+    </div>
+
+    <div class="specimen reveal">
+      <div class="specimen-bar">
         <div class="gauge" aria-hidden="true">
           <div class="gauge-track"></div>
           <div class="gauge-band"></div>
@@ -507,209 +956,387 @@ pre code { background: none; padding: 0; font-size: inherit; }
         <div class="spacer"></div>
         <div class="dial">
           <label for="size">Type size</label>
-          <input type="range" id="size" min="14" max="30" step="0.5" value="18" aria-describedby="sizeHint">
-          <span class="readout" id="sizeLabel">18.0 pt</span>
+          <input type="range" id="size" min="14" max="30" step="0.5" value="18" aria-describedby="specimenNote">
+          <output id="sizeOut" for="size">18.0 pt</output>
         </div>
       </div>
       <div class="specimen-body">
-        <p class="specimen-text" id="specimen">
+        <p id="specimen">
           The largest effect on reading comfort is how many characters sit on a line.
           Too few and the eye finishes before it has parsed the sentence. Too many and
           the return sweep to the next line loses its place, so you re-read the same
-          line without noticing. Drag the slider and watch the gauge.
+          line without noticing.
         </p>
       </div>
-    </div>
-    <p class="hint" id="sizeHint">The band between 0.26&deg; and 0.38&deg; is where reading stays comfortable. The gauge shows where you land.</p>
-  </div>
-</section>
-
-<section id="measure">
-  <div class="wrap">
-    <h2>The column is capped in characters, not pixels.</h2>
-    <p>
-      A pixel cap looks stable. It quietly changes the character count whenever the type
-      size changes, so it is right on one screen and wrong on another. Muo holds the
-      measure at <strong>72 characters</strong> and lets the physical size of the page
-      follow the hardware.
-    </p>
-
-    <div class="measure">
-      <p class="measure-count" id="measureCount">72 characters</p>
-      <p class="measure-line" id="measureLine">
-        A reader is a machine for one job, getting words from a screen into a head with
-        as little friction as possible. Everything else exists to keep that job from
-        being interrupted.
+      <p class="specimen-note" id="specimenNote">
+        Drag the slider. The gauge shows the apparent height of a capital letter, which is
+        what the eye actually reads. Between 0.26 and 0.38 degrees is the comfortable band.
       </p>
-      <div class="measure-ruler" id="ruler" aria-hidden="true"></div>
     </div>
   </div>
 </section>
 
-<section id="inside">
+<!-- Benefits -->
+<section class="section soft">
   <div class="wrap">
-    <h2>Three panes, one window.</h2>
-    <p>
-      Files on the left, the page in the middle, the document's own headings on the
-      right. Every divider drags. Every pane folds away and comes back where you left it.
-    </p>
+    <div class="section-head reveal">
+      <h2>What changes when the measure is fixed</h2>
+      <p>Four things, all of them consequences of the same decision.</p>
+    </div>
+
+    <div class="grid-3">
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><circle cx="116" cy="116" r="68"/><path d="m172 172 44 44"/></svg>
+        </div>
+        <h3>Your eyes stop doing arithmetic</h3>
+        <p>The size is solved from the angle a letter covers at your distance, not guessed from a preference screen.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M128 96c0-16-8-32-32-32H32v128h64c24 0 32 16 32 32"/><path d="M128 96c0-16 8-32 32-32h64v128h-64c-24 0-32 16-32 32"/></svg>
+        </div>
+        <h3>Every line is 72 characters</h3>
+        <p>The column is capped in characters, so raising the type size widens the page instead of shortening the line.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="48" width="192" height="160" rx="16"/><path d="M96 48v160"/></svg>
+        </div>
+        <h3>Three panes that fold away</h3>
+        <p>Files on the left, the page in the middle, the outline on the right. Every divider drags, every pane remembers.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M156 40H92a16 16 0 0 0-16 16v152"/><path d="M164 216H92"/><path d="M156 40v152a24 24 0 0 1-24 24"/><path d="M196 96h-24"/><path d="M196 144h-24"/></svg>
+        </div>
+        <h3>Find shows you where</h3>
+        <p>Every match is marked on the page, headings included. Enter walks them. In a PDF it turns to the right page.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M32 128a96 96 0 0 1 192 0"/><path d="M128 128 168 96"/><circle cx="128" cy="128" r="12"/></svg>
+        </div>
+        <h3>The gauge in the title bar</h3>
+        <p>One readout, always visible: the apparent size and whether it landed in the band. It is the only number the window shows.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M128 216V56"/><path d="m80 104 48-48 48 48"/><rect x="40" y="152" width="176" height="64" rx="16"/></svg>
+        </div>
+        <h3>It remembers</h3>
+        <p>Your place in each document, the width of each pane, which panes you folded, and the files you had open.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>Three steps, and the second one is invisible</h2>
+      <p>There is no calibration screen to get through before you can read.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <span class="n">01</span>
+        <h3>Open a file</h3>
+        <p>Markdown, PDF or plain text. Drop it on the window or pick it from the library pane.</p>
+      </div>
+      <div class="step reveal">
+        <span class="n">02</span>
+        <h3>Muo reads your screen</h3>
+        <p>Density from the display, distance from a sensible default for its size class. Both are editable in settings.</p>
+      </div>
+      <div class="step reveal">
+        <span class="n">03</span>
+        <h3>Read</h3>
+        <p>The column is already 72 characters. Nudge the size if you want; the measure will not move.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Proof -->
+<section class="section soft" id="inside">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <h2>The window, both appearances</h2>
+      <p>Warm paper and warm ink in light, warm charcoal and warm grey in dark. Never pure black on pure white, which blooms at the edges of letters.</p>
+    </div>
 
     <div class="shots">
-      <figure class="wide">
-        <img src="shots/reading-light.png" alt="Muo with a document open, showing the library of files on the left, the reading column in the middle, and the page outline on the right." width="1440" height="860" loading="lazy">
+      <figure class="shot wide reveal">
+        <img src="shots/reading-light.png" alt="Muo in light appearance: library pane, reading column, outline pane, and the type gauge in the title bar." width="1440" height="860" loading="lazy">
         <figcaption>Light. The page is the only opaque surface.</figcaption>
       </figure>
-      <figure>
+      <figure class="shot reveal">
         <img src="shots/reading-dark.png" alt="The same window in dark appearance, with warm charcoal paper and warm grey ink." width="1440" height="860" loading="lazy">
-        <figcaption>Dark. Warm charcoal and warm ink, never pure black on white.</figcaption>
+        <figcaption>Dark. The same palette, one step down.</figcaption>
       </figure>
-      <figure>
-        <img src="shots/settings-light.png" alt="The reading settings pane, with a specimen of the type at the top and sliders for distance and size." width="1100" height="760" loading="lazy">
+      <figure class="shot reveal">
+        <img src="shots/settings-light.png" alt="Reading settings, showing a specimen of the type above sliders for distance and size." width="1100" height="760" loading="lazy">
         <figcaption>Settings shows the type you are choosing, at the size you are choosing.</figcaption>
       </figure>
     </div>
-  </div>
-</section>
 
-<section>
-  <div class="wrap">
-    <h2>What else is in it.</h2>
-    <div class="pairs">
-      <div class="pair">
-        <h3>Find, with marks on the page</h3>
-        <p>Every match is highlighted where it sits, headings included. Enter walks them. In a PDF, Find reads the page text and turns to the page the match is on.</p>
-      </div>
-      <div class="pair">
-        <h3>Code you can tidy</h3>
-        <p>Go and JSON go through the standard library. Other languages get spacing and indentation that never reaches inside a string or a comment. Format tells you when there is nothing to change.</p>
-      </div>
-      <div class="pair">
-        <h3>It remembers</h3>
-        <p>Your place in each document, the width of each pane, which panes you folded, and the files you had open. Close the window and it comes back as you left it.</p>
-      </div>
-      <div class="pair">
-        <h3>One dependency</h3>
-        <p>The whole app is Go, drawn on the GPU by MyGo. No webview, no JavaScript runtime, no frontend build. It opens in about a second.</p>
-      </div>
+    <div class="stats">
+      <div class="stat reveal"><b>6,686</b><span>lines of Go</span></div>
+      <div class="stat reveal"><b>99</b><span>tests</span></div>
+      <div class="stat reveal"><b>0.32&deg;</b><span>target angle</span></div>
+      <div class="stat reveal"><b>72</b><span>characters per line</span></div>
     </div>
   </div>
 </section>
 
-<section id="install">
+<!-- FAQ -->
+<section class="section" id="questions">
   <div class="wrap">
-    <h2>Build it yourself.</h2>
-    <p>Muo is Go and one module. You need Go 1.24 or newer.</p>
-    <pre><code>git clone https://github.com/yaffalhakim1/muo
-cd muo
-go build -o muo .
-./muo sample.md</code></pre>
+    <div class="section-head reveal">
+      <h2>Questions worth asking before you install</h2>
+      <p>Including the one about PDFs, which is the honest one.</p>
+    </div>
+
+    <div class="faq">
+      <details class="reveal">
+        <summary>Which file formats does it open?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>Markdown, PDF and plain text. Markdown includes GitHub's extensions: tables, task lists, strikethrough and footnotes.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Does PDF rendering look right?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer">
+          <p>Not yet. Muo has its own PDF interpreter rather than a browser engine, and it draws text runs as solid bars instead of glyphs. The page layout, the images and the page counter are right; the words are not readable.</p>
+          <p>Search does work on PDFs, because the interpreter reads the text even when it cannot draw it. It turns to the page the match is on. Faithful rendering needs the embedded font programs interpreted, which is a larger job than the rest of the app.</p>
+        </div>
+      </details>
+
+      <details class="reveal">
+        <summary>Why 72 characters and not a pixel width?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>The eye finishes a line and returns to the next one by moving a fixed number of characters. Fix that number and the sweep stays reliable. Fix the pixels and the number moves whenever the type size does.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>What is the number in the title bar?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>The apparent height of a capital letter, in degrees, followed by the character count. Below 0.26 degrees the eye leans in. Above 0.38 the return sweep gets unreliable. The marker's colour says which side of the band you are on.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Can I set the size myself?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>Yes, with the slider in settings or <code>Cmd</code> plus and minus. The model is a starting point, not a lock. Following the model again is one button away.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Does it run on macOS and Linux?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>Yes. Each release carries a signed macOS disk image, two Windows installers, and Debian packages plus tarballs for Linux on both x64 and arm64. Every platform is built from the same tag by the same workflow.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Is there a mobile version?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>No. The whole idea depends on knowing the screen's density and the distance to it, and a phone held at 30 cm changes both every time you move. That is a different design problem.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Does it need an account or a network?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>No account, no sync, no telemetry. It reads files from disk and writes two small JSON files to your user data folder. The only network access is the update check, and only when you ask for it.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>What is it built with?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>Go and MyGo, which draws the interface on the GPU. No webview, no JavaScript runtime, no frontend build. One dependency in <code>go.mod</code>.</p></div>
+      </details>
+
+      <details class="reveal">
+        <summary>Is it free?<svg class="chev" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176"/><path d="M128 40v176"/></svg></summary>
+        <div class="answer"><p>Yes, MIT licensed. The source is on GitHub and you can build it yourself in one command.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- Final call -->
+<section class="final" id="download">
+  <div class="wrap">
+    <h2>Install it and open the file you are already avoiding</h2>
     <p>
-      On Windows the binary is <code>muo.exe</code>. For live reload while you edit,
-      <code>go run github.com/egoist/mygo/cmd/mygo@v0.6.3 dev .</code> rebuilds and
-      restarts the window on save.
+      Per user, no administrator prompt, about 11 MB. Uninstalling removes everything it
+      added and leaves your reading positions alone.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/yaffalhakim1/muo/releases/latest">
+        <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M224 152v56a16 16 0 0 1-16 16H48a16 16 0 0 1-16-16v-56"/><path d="M128 24v128"/><path d="m88 112 40 40 40-40"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn btn-quiet" href="https://github.com/yaffalhakim1/muo#build">Build from source</a>
+    </div>
+    <p class="hero-proof" style="margin-top: 24px;">
+      <span>Windows 10 and 11, x64 and arm64</span>
+      <span>macOS 12 and later</span>
+      <span>Debian and Ubuntu, x64 and arm64</span>
     </p>
   </div>
 </section>
 
 </main>
 
-<footer>
-  <div class="wrap foot">
-    <span>Muo</span>
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <a href="index.html" aria-current="page">Muo</a>
     <a href="https://github.com/yaffalhakim1/muo">Source</a>
     <a href="https://github.com/yaffalhakim1/muo/blob/main/DESIGN_REVIEW.md">Design notes</a>
     <a href="https://github.com/egoist/mygo">Built on MyGo</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="terms.html">Terms</a>
     <span class="spacer"></span>
-    <span id="stats">6,686 lines of Go, 99 tests</span>
+    <span>MIT licensed</span>
   </div>
 </footer>
 
 <script>
 (function () {
-  var size = document.getElementById('size');
-  var specimen = document.getElementById('specimen');
-  var mark = document.getElementById('gaugeMark');
-  var angleOut = document.getElementById('readoutAngle');
-  var charsOut = document.getElementById('readoutChars');
-  var sizeLabel = document.getElementById('sizeLabel');
+  "use strict";
 
-  // The gauge spans 0.18 to 0.46 degrees, the band sits between 0.26 and 0.38.
+  // -------------------------------------------------------------------------
+  // The island menu. The hamburger morphs into an X and the overlay staggers
+  // its links in. Escape closes it, and so does choosing a link.
+  // -------------------------------------------------------------------------
+  var burger = document.querySelector(".burger");
+  var sheet = document.getElementById("sheet");
+
+  function setMenu(open) {
+    burger.setAttribute("aria-expanded", String(open));
+    burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    sheet.dataset.open = String(open);
+    if (open) {
+      sheet.hidden = false;
+    } else {
+      // Keep it in the tree until the fade finishes, then take it out so its
+      // links leave the tab order.
+      window.setTimeout(function () {
+        if (sheet.dataset.open === "false") sheet.hidden = true;
+      }, 700);
+    }
+  }
+
+  burger.addEventListener("click", function () {
+    setMenu(burger.getAttribute("aria-expanded") !== "true");
+  });
+
+  sheet.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") setMenu(false);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && burger.getAttribute("aria-expanded") === "true") {
+      setMenu(false);
+      burger.focus();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Scroll reveals. One observer, no scroll listener.
+  // -------------------------------------------------------------------------
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!reduce) {
+    var revealer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("on");
+          revealer.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: "0px 0px -80px 0px", threshold: 0.1 });
+
+    document.querySelectorAll(".reveal").forEach(function (el) {
+      revealer.observe(el);
+    });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) {
+      el.classList.add("on");
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // The tagline. Each word takes the full ink colour as it crosses the line,
+  // in reading order.
+  // -------------------------------------------------------------------------
+  var tagline = document.getElementById("tagline");
+  if (tagline) {
+    var words = tagline.textContent.trim().split(/\s+/);
+    tagline.textContent = "";
+    var spans = words.map(function (word) {
+      var span = document.createElement("span");
+      span.className = "w";
+      span.textContent = word + " ";
+      tagline.appendChild(span);
+      return span;
+    });
+
+    if (reduce) {
+      spans.forEach(function (s) { s.classList.add("on"); });
+    } else {
+      var wordObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("on");
+            wordObserver.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: "0px 0px -35% 0px" });
+      spans.forEach(function (s) { wordObserver.observe(s); });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // The specimen. The marker is 1:1 with the slider: no transition on the
+  // transform, because the value is the input.
+  // -------------------------------------------------------------------------
+  var size = document.getElementById("size");
+  var specimen = document.getElementById("specimen");
+  var mark = document.getElementById("gaugeMark");
+  var angleOut = document.getElementById("readoutAngle");
+  var sizeOut = document.getElementById("sizeOut");
+
   var FROM = 0.18, TO = 0.46, BAND_LO = 0.26, BAND_HI = 0.38;
-
-  // A 96 ppi desktop at 65 cm, which is what the specimen shows. The angle is the
-  // cap height's apparent size, and the cap is 0.70 of the em.
+  var GAUGE = 64, MARK = 3;
   var PPI = 96, CM = 65, CAP = 0.70, RAD2DEG = 57.29577951308232;
-
-  // The column holds 72 characters, as the app does. The specimen is set at the
-  // size the slider gives, and the column's width follows from it, so the count
-  // stays put and the page gets wider rather than denser. 0.5em is the app's
-  // measured average advance for prose.
-  var CHARS = 72;
-  var ADVANCE = 0.5;
+  var CHARS = 72, ADVANCE = 0.5;
 
   function angleFor(px) {
     var heightCm = (px * CAP) / PPI * 2.54;
     return 2 * Math.atan(heightCm / 2 / CM) * RAD2DEG;
   }
 
-  function colour(angle) {
-    if (angle < BAND_LO || angle > BAND_HI) return 'near';
-    return 'good';
-  }
-
-  // The gauge is 58 wide and the marker is 3 wide, so the travel is 55: at the
-  // low end its left edge sits at 0, at the high end its right edge at 58. Without
-  // the half-width offset the marker hangs over the end.
-  var GAUGE = 58, MARK = 3;
-
   function paint() {
     var px = parseFloat(size.value);
     var angle = angleFor(px);
     var t = (angle - FROM) / (TO - FROM);
     t = Math.max(0, Math.min(1, t));
-    var grade = colour(angle);
+    var inBand = angle >= BAND_LO && angle <= BAND_HI;
 
-    // 1:1 with the slider. The transform is set directly, with no transition,
-    // because the value IS the input: a transition here would lag the thumb.
-    mark.style.transform = 'translateX(' + (t * (GAUGE - MARK)) + 'px)';
-    mark.dataset.grade = grade;
+    mark.style.transform = "translateX(" + (t * (GAUGE - MARK)) + "px)";
+    mark.style.background = inBand ? "var(--good)" : "var(--near)";
 
-    angleOut.textContent = angle.toFixed(2) + '\u00B0';
-    angleOut.dataset.grade = grade;
-    sizeLabel.textContent = px.toFixed(1) + ' pt';
-    charsOut.textContent = CHARS;
+    angleOut.textContent = angle.toFixed(2) + "\u00B0";
+    angleOut.style.color = inBand ? "var(--good)" : "var(--near)";
+    sizeOut.textContent = px.toFixed(1) + " pt";
 
-    specimen.style.fontSize = px + 'px';
-    specimen.style.maxWidth = (px * ADVANCE * CHARS) + 'px';
+    specimen.style.fontSize = px + "px";
+    specimen.style.maxWidth = (px * ADVANCE * CHARS) + "px";
   }
 
-  size.addEventListener('input', paint);
-  window.addEventListener('resize', paint);
-  paint();
-
-  // The ruler under the measure paragraph: a tick every ten characters.
-  var ruler = document.getElementById('ruler');
-  var line = document.getElementById('measureLine');
-  function drawRuler() {
-    ruler.innerHTML = '';
-    var width = line.clientWidth;
-    if (!width) return;
-    for (var i = 0; i <= 80; i += 10) {
-      var tick = document.createElement('div');
-      tick.className = 'measure-tick' + (i % 20 === 0 ? ' major' : '');
-      tick.style.left = (i / 80 * width) + 'px';
-      ruler.appendChild(tick);
-      if (i % 20 === 0 && i > 0) {
-        var num = document.createElement('div');
-        num.className = 'measure-num';
-        num.textContent = i;
-        num.style.left = (i / 80 * width) + 'px';
-        ruler.appendChild(num);
-      }
-    }
+  if (size) {
+    size.addEventListener("input", paint);
+    paint();
   }
-  drawRuler();
-  window.addEventListener('resize', drawRuler);
 })();
 </script>
 
