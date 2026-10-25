@@ -58,6 +58,36 @@ go run github.com/egoist/mygo/cmd/mygo@v0.6.3 dev .
 
 That rebuilds and restarts the window when a Go file changes.
 
+## Release
+
+`go.mod` pins the MyGo CLI as a tool, so `go tool mygo build` runs the version
+this project was built against. One command makes every installer:
+
+```sh
+go tool mygo build -platform windows/amd64,darwin/universal,linux/amd64
+```
+
+That writes a Windows `.exe` and an NSIS setup, a signed macOS `.dmg`, and a
+Debian package plus a `.tar.gz` with an install script. They land in `build/`,
+one directory per platform.
+
+Pushing a tag builds all of it on GitHub Actions and attaches the result to a
+draft release you publish. See [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+```sh
+# Bump "version" in mygo.json first, then:
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow refuses a tag that disagrees with `mygo.json`, so the release page
+and the version the app reports cannot drift apart.
+
+Installed apps update themselves. The manifests are signed with
+`MYGO_UPDATER_PRIVATE_KEY`, which is set as a repository secret, and the public
+half is in `mygo.json`. Keep the private key: losing it strands every installed
+copy.
+
 ## Layout
 
 ```

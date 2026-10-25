@@ -7,5 +7,9 @@
     { "ext": ["md", "markdown"], "name": "Markdown Document", "mimeType": "text/markdown", "role": "Viewer" },
     { "ext": ["pdf"], "name": "PDF Document", "mimeType": "application/pdf", "role": "Viewer" }
   ],
-  "linux": { "webview": false, "categories": ["Utility", "Office"] }
+  "linux": { "webview": false, "categories": ["Utility", "Office"] },
+  "updates": {
+    "publicKey": "P4f/O5SxYn2Gu6kVUGbC0Vl45MEBERcIfuWALcxVNHw=",
+    "github": "yaffalhakim1/muo"
+  }
 }
