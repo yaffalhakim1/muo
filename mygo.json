@@ -1,0 +1,11 @@
+{
+  "name": "Muo",
+  "identifier": "com.muo.reader",
+  "version": "0.1.0",
+  "out": "build",
+  "fileAssociations": [
+    { "ext": ["md", "markdown"], "name": "Markdown Document", "mimeType": "text/markdown", "role": "Viewer" },
+    { "ext": ["pdf"], "name": "PDF Document", "mimeType": "application/pdf", "role": "Viewer" }
+  ],
+  "linux": { "webview": false, "categories": ["Utility", "Office"] }
+}

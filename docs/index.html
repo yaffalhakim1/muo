@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muo, a reader that sizes type from where you sit</title>
+<meta name="description" content="Muo sets the type size from your screen and your viewing distance, then holds the line at 72 characters. A native markdown reader for macOS and Windows.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23faf8f5'/><path d='M4 11V5.5h1.6l2.4 3 2.4-3H12V11' stroke='%231f1d1b' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+:root {
+  --paper: #faf8f5;
+  --chrome: #f3f0ea;
+  --raised: #eae6de;
+  --border: #e3ddd3;
+  --ink: #1f1d1b;
+  --muted: #6a635b;
+  --accent: #3a5a7d;
+  --good: #2f7d4f;
+  --near: #8a5d0e;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1a1a1c;
+    --chrome: #151517;
+    --raised: #242428;
+    --border: #34343a;
+    --ink: #cdc8c2;
+    --muted: #928c85;
+    --accent: #7aa3cc;
+    --good: #63bd89;
+    --near: #d9a441;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 17px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  /* Reduced motion means gentler, not zero: colour and opacity stay, movement
+     goes. Nothing here moves anyway, but the rule is stated so a later addition
+     inherits it rather than rediscovering it. */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body { margin: 0; }
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-thickness 120ms var(--ease-out); }
+a:hover { text-decoration-thickness: 2px; }
+
+/* ---------- top bar ---------- */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .bar { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+.bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 52px;
+}
+
+.mark {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-right: auto;
+}
+
+.mark span { color: var(--muted); font-weight: 400; margin-left: 10px; }
+
+.bar a.plain {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 120ms var(--ease-out);
+}
+
+.bar a.plain:hover { color: var(--ink); }
+
+/* ---------- hero ---------- */
+
+.hero { padding: 88px 0 24px; }
+
+.eyebrow {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+h1 {
+  font-size: clamp(34px, 5.2vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+  font-weight: 650;
+  margin: 0 0 22px;
+  max-width: 15ch;
+}
+
+.lede {
+  font-size: clamp(17px, 2.1vw, 20px);
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 52ch;
+  margin: 0 0 40px;
+}
+
+.lede strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- the specimen ---------- */
+
+.specimen {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--paper);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.specimen-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome);
+  flex-wrap: wrap;
+}
+
+.gauge {
+  position: relative;
+  width: 58px;
+  height: 11px;
+  flex: none;
+}
+
+.gauge-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 3.5px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+/* The comfortable band, placed by the same 0.18–0.46 span the marker uses:
+   0.26° is 28.6% along, 0.38° is 71.4%. */
+.gauge-band {
+  position: absolute;
+  left: 28.6%;
+  right: 28.6%;
+  top: 3.5px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+}
+
+.gauge-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 11px;
+  border-radius: 1.5px;
+  will-change: transform;
+  transition: background-color 200ms var(--ease-out);
+}
+
+.gauge-mark[data-grade="good"] { background: var(--good); }
+.gauge-mark[data-grade="near"] { background: var(--near); }
+
+.readout {
+  font: 400 11px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.readout .angle { transition: color 200ms var(--ease-out); }
+.readout .angle[data-grade="good"] { color: var(--good); }
+.readout .angle[data-grade="near"] { color: var(--near); }
+
+.spacer { flex: 1 1 auto; }
+
+.dial {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dial label { font-size: 12px; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: clamp(110px, 22vw, 190px);
+  height: 20px;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
+  transition: transform 160ms var(--ease-out);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.16);
+}
+
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.94); }
+
+.specimen-body {
+  padding: 30px 32px 34px;
+}
+
+.specimen-text {
+  margin: 0;
+  max-width: 34em;
+  line-height: 1.58;
+}
+
+.specimen-text + .specimen-text { margin-top: 1em; }
+
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---------- sections ---------- */
+
+section { padding: 72px 0; }
+
+h2 {
+  font-size: clamp(24px, 3.2vw, 32px);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  font-weight: 640;
+  margin: 0 0 14px;
+  max-width: 22ch;
+}
+
+h2 + p {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 60ch;
+  margin: 0 0 32px;
+}
+
+h2 + p strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- the measure strip ---------- */
+
+.measure {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  background: var(--chrome);
+}
+
+.measure-line {
+  font-size: 17px;
+  line-height: 1.58;
+  margin: 0 0 18px;
+  max-width: 72ch;
+}
+
+.measure-ruler {
+  position: relative;
+  height: 26px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.measure-tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 8px;
+  background: var(--border);
+}
+
+.measure-tick.major { height: 13px; background: var(--muted); }
+
+.measure-num {
+  position: absolute;
+  top: 15px;
+  font: 400 10px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  transform: translateX(-50%);
+}
+
+.measure-count {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+/* ---------- screenshots ---------- */
+
+.shots {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 760px) {
+  .shots { grid-template-columns: 1fr 1fr; }
+  .shots .wide { grid-column: 1 / -1; }
+}
+
+figure {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--chrome);
+}
+
+figure img { display: block; width: 100%; height: auto; }
+
+figcaption {
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 11px 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- two column list ---------- */
+
+.pairs {
+  display: grid;
+  gap: 28px 48px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .pairs { grid-template-columns: 1fr 1fr; }
+}
+
+.pair h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: 0 0 6px;
+}
+
+.pair p {
+  font-size: 15px;
+  line-height: 1.58;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---------- footer ---------- */
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 0 64px;
+  margin-top: 24px;
+}
+
+.foot {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.foot .spacer { flex: 1 1 auto; }
+
+code {
+  font: 400 0.9em/1 var(--mono);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+pre {
+  font: 400 13px/1.6 var(--mono);
+  background: var(--chrome);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+}
+
+pre code { background: none; padding: 0; font-size: inherit; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap bar-inner">
+    <div class="mark">Muo<span>a reader</span></div>
+    <a class="plain" href="#measure">The measure</a>
+    <a class="plain" href="#inside">Inside</a>
+    <a class="plain" href="#install">Install</a>
+    <a class="plain" href="https://github.com/yaffalhakim1/muo">GitHub</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Markdown reader for macOS and Windows</p>
+    <h1>Type sized from where you sit.</h1>
+    <p class="lede">
+      A point size means nothing on its own. What your eye sees is the angle a letter
+      covers, and that depends on how far the screen is and how many pixels it packs
+      into an inch. Muo measures both and solves for the size.
+    </p>
+
+    <div class="specimen">
+      <div class="specimen-head">
+        <div class="gauge" aria-hidden="true">
+          <div class="gauge-track"></div>
+          <div class="gauge-band"></div>
+          <div class="gauge-mark" id="gaugeMark"></div>
+        </div>
+        <div class="readout"><span class="angle" id="readoutAngle">0.32&deg;</span> &middot; <span id="readoutChars">72</span>ch</div>
+        <div class="spacer"></div>
+        <div class="dial">
+          <label for="size">Type size</label>
+          <input type="range" id="size" min="14" max="30" step="0.5" value="18" aria-describedby="sizeHint">
+          <span class="readout" id="sizeLabel">18.0 pt</span>
+        </div>
+      </div>
+      <div class="specimen-body">
+        <p class="specimen-text" id="specimen">
+          The largest effect on reading comfort is how many characters sit on a line.
+          Too few and the eye finishes before it has parsed the sentence. Too many and
+          the return sweep to the next line loses its place, so you re-read the same
+          line without noticing. Drag the slider and watch the gauge.
+        </p>
+      </div>
+    </div>
+    <p class="hint" id="sizeHint">The band between 0.26&deg; and 0.38&deg; is where reading stays comfortable. The gauge shows where you land.</p>
+  </div>
+</section>
+
+<section id="measure">
+  <div class="wrap">
+    <h2>The column is capped in characters, not pixels.</h2>
+    <p>
+      A pixel cap looks stable. It quietly changes the character count whenever the type
+      size changes, so it is right on one screen and wrong on another. Muo holds the
+      measure at <strong>72 characters</strong> and lets the physical size of the page
+      follow the hardware.
+    </p>
+
+    <div class="measure">
+      <p class="measure-count" id="measureCount">72 characters</p>
+      <p class="measure-line" id="measureLine">
+        A reader is a machine for one job, getting words from a screen into a head with
+        as little friction as possible. Everything else exists to keep that job from
+        being interrupted.
+      </p>
+      <div class="measure-ruler" id="ruler" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<section id="inside">
+  <div class="wrap">
+    <h2>Three panes, one window.</h2>
+    <p>
+      Files on the left, the page in the middle, the document's own headings on the
+      right. Every divider drags. Every pane folds away and comes back where you left it.
+    </p>
+
+    <div class="shots">
+      <figure class="wide">
+        <img src="shots/reading-light.png" alt="Muo with a document open, showing the library of files on the left, the reading column in the middle, and the page outline on the right." width="1440" height="860" loading="lazy">
+        <figcaption>Light. The page is the only opaque surface.</figcaption>
+      </figure>
+      <figure>
+        <img src="shots/reading-dark.png" alt="The same window in dark appearance, with warm charcoal paper and warm grey ink." width="1440" height="860" loading="lazy">
+        <figcaption>Dark. Warm charcoal and warm ink, never pure black on white.</figcaption>
+      </figure>
+      <figure>
+        <img src="shots/settings-light.png" alt="The reading settings pane, with a specimen of the type at the top and sliders for distance and size." width="1100" height="760" loading="lazy">
+        <figcaption>Settings shows the type you are choosing, at the size you are choosing.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What else is in it.</h2>
+    <div class="pairs">
+      <div class="pair">
+        <h3>Find, with marks on the page</h3>
+        <p>Every match is highlighted where it sits, headings included. Enter walks them. In a PDF, Find reads the page text and turns to the page the match is on.</p>
+      </div>
+      <div class="pair">
+        <h3>Code you can tidy</h3>
+        <p>Go and JSON go through the standard library. Other languages get spacing and indentation that never reaches inside a string or a comment. Format tells you when there is nothing to change.</p>
+      </div>
+      <div class="pair">
+        <h3>It remembers</h3>
+        <p>Your place in each document, the width of each pane, which panes you folded, and the files you had open. Close the window and it comes back as you left it.</p>
+      </div>
+      <div class="pair">
+        <h3>One dependency</h3>
+        <p>The whole app is Go, drawn on the GPU by MyGo. No webview, no JavaScript runtime, no frontend build. It opens in about a second.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Build it yourself.</h2>
+    <p>Muo is Go and one module. You need Go 1.24 or newer.</p>
+    <pre><code>git clone https://github.com/yaffalhakim1/muo
+cd muo
+go build -o muo .
+./muo sample.md</code></pre>
+    <p>
+      On Windows the binary is <code>muo.exe</code>. For live reload while you edit,
+      <code>go run github.com/egoist/mygo/cmd/mygo@v0.6.3 dev .</code> rebuilds and
+      restarts the window on save.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>Muo</span>
+    <a href="https://github.com/yaffalhakim1/muo">Source</a>
+    <a href="https://github.com/yaffalhakim1/muo/blob/main/DESIGN_REVIEW.md">Design notes</a>
+    <a href="https://github.com/egoist/mygo">Built on MyGo</a>
+    <span class="spacer"></span>
+    <span id="stats">6,686 lines of Go, 99 tests</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var size = document.getElementById('size');
+  var specimen = document.getElementById('specimen');
+  var mark = document.getElementById('gaugeMark');
+  var angleOut = document.getElementById('readoutAngle');
+  var charsOut = document.getElementById('readoutChars');
+  var sizeLabel = document.getElementById('sizeLabel');
+
+  // The gauge spans 0.18 to 0.46 degrees, the band sits between 0.26 and 0.38.
+  var FROM = 0.18, TO = 0.46, BAND_LO = 0.26, BAND_HI = 0.38;
+
+  // A 96 ppi desktop at 65 cm, which is what the specimen shows. The angle is the
+  // cap height's apparent size, and the cap is 0.70 of the em.
+  var PPI = 96, CM = 65, CAP = 0.70, RAD2DEG = 57.29577951308232;
+
+  // The column holds 72 characters, as the app does. The specimen is set at the
+  // size the slider gives, and the column's width follows from it, so the count
+  // stays put and the page gets wider rather than denser. 0.5em is the app's
+  // measured average advance for prose.
+  var CHARS = 72;
+  var ADVANCE = 0.5;
+
+  function angleFor(px) {
+    var heightCm = (px * CAP) / PPI * 2.54;
+    return 2 * Math.atan(heightCm / 2 / CM) * RAD2DEG;
+  }
+
+  function colour(angle) {
+    if (angle < BAND_LO || angle > BAND_HI) return 'near';
+    return 'good';
+  }
+
+  // The gauge is 58 wide and the marker is 3 wide, so the travel is 55: at the
+  // low end its left edge sits at 0, at the high end its right edge at 58. Without
+  // the half-width offset the marker hangs over the end.
+  var GAUGE = 58, MARK = 3;
+
+  function paint() {
+    var px = parseFloat(size.value);
+    var angle = angleFor(px);
+    var t = (angle - FROM) / (TO - FROM);
+    t = Math.max(0, Math.min(1, t));
+    var grade = colour(angle);
+
+    // 1:1 with the slider. The transform is set directly, with no transition,
+    // because the value IS the input: a transition here would lag the thumb.
+    mark.style.transform = 'translateX(' + (t * (GAUGE - MARK)) + 'px)';
+    mark.dataset.grade = grade;
+
+    angleOut.textContent = angle.toFixed(2) + '\u00B0';
+    angleOut.dataset.grade = grade;
+    sizeLabel.textContent = px.toFixed(1) + ' pt';
+    charsOut.textContent = CHARS;
+
+    specimen.style.fontSize = px + 'px';
+    specimen.style.maxWidth = (px * ADVANCE * CHARS) + 'px';
+  }
+
+  size.addEventListener('input', paint);
+  window.addEventListener('resize', paint);
+  paint();
+
+  // The ruler under the measure paragraph: a tick every ten characters.
+  var ruler = document.getElementById('ruler');
+  var line = document.getElementById('measureLine');
+  function drawRuler() {
+    ruler.innerHTML = '';
+    var width = line.clientWidth;
+    if (!width) return;
+    for (var i = 0; i <= 80; i += 10) {
+      var tick = document.createElement('div');
+      tick.className = 'measure-tick' + (i % 20 === 0 ? ' major' : '');
+      tick.style.left = (i / 80 * width) + 'px';
+      ruler.appendChild(tick);
+      if (i % 20 === 0 && i > 0) {
+        var num = document.createElement('div');
+        num.className = 'measure-num';
+        num.textContent = i;
+        num.style.left = (i / 80 * width) + 'px';
+        ruler.appendChild(num);
+      }
+    }
+  }
+  drawRuler();
+  window.addEventListener('resize', drawRuler);
+})();
+</script>
+
+</body>
+</html>

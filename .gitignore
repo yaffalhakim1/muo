@@ -1,0 +1,8 @@
+# The build output and the dev app's own directory.
+/build/
+/.mygo/
+muo-dev.exe
+mygo_windows_*.syso
+
+# Screenshots taken while working, not the ones the README and the page use.
+/page.png
