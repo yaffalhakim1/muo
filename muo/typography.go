@@ -132,14 +132,24 @@ func grade(angle float64) Comfort {
 // is capped by the space, never by a pixel width: a pixel cap would change the
 // character count whenever the type size changed, and so the measure on one
 // machine only.
+//
+// The margin is 0.78 of the viewport, which leaves room for the page's own
+// insets. On a dense laptop panel the type is large enough that 72 characters
+// need more than that margin, and the measure gave way to 59.7 characters —
+// which is the failure this function exists to prevent. So the margin is what
+// gives way instead, down to the full viewport, and the measure holds.
 func column(fontPx, ch, viewportPx float64) (width, chars float32) {
 	ideal := ch * charsPerLine
-	limit := viewportPx * 0.78
-	if limit < fontPx*10 {
-		limit = viewportPx
-	}
-	if ideal <= limit {
+	if ideal <= viewportPx*0.78 {
 		return float32(ideal), float32(charsPerLine)
 	}
-	return float32(limit), float32(limit / ch)
+	// The column wants more than the comfortable margin. It takes the room up to
+	// the viewport's own width before it gives up a character, because the
+	// measure is the promise and the margin is the preference.
+	if ideal <= viewportPx {
+		return float32(ideal), float32(charsPerLine)
+	}
+	// The window genuinely cannot hold 72 characters at this size: the count
+	// gives way, and it is reported honestly so the readout says so.
+	return float32(viewportPx), float32(viewportPx / ch)
 }
