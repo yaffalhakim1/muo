@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Muo, a reader that sizes type from where you sit</title>
 <meta name="description" content="Muo sets the type size from your screen and your viewing distance, then holds the line at 72 characters. A native markdown reader for macOS and Windows.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23faf8f5'/><path d='M4 11V5.5h1.6l2.4 3 2.4-3H12V11' stroke='%231f1d1b' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="icon" href="icon.png" type="image/png">
 <style>
 :root {
   --paper: #faf8f5;
@@ -96,13 +96,23 @@ a:hover { text-decoration-thickness: 2px; }
 }
 
 .mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   margin-right: auto;
 }
 
-.mark span { color: var(--muted); font-weight: 400; margin-left: 10px; }
+.mark img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: block;
+}
+
+.mark span { color: var(--muted); font-weight: 400; margin-left: 2px; }
 
 .bar a.plain {
   color: var(--muted);
@@ -464,8 +474,10 @@ pre code { background: none; padding: 0; font-size: inherit; }
 
 <header class="bar">
   <div class="wrap bar-inner">
-    <div class="mark">Muo<span>a reader</span></div>
-    <a class="plain" href="#measure">The measure</a>
+    <div class="mark">
+      <img src="icon.png" alt="" width="22" height="22">
+      Muo<span>a reader</span>
+    </div>    <a class="plain" href="#measure">The measure</a>
     <a class="plain" href="#inside">Inside</a>
     <a class="plain" href="#install">Install</a>
     <a class="plain" href="https://github.com/yaffalhakim1/muo">GitHub</a>
