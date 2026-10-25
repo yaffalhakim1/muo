@@ -7,4 +7,5 @@ mygo_windows_*.syso
 
 # Screenshots taken while working, not the ones the README and the page use.
 /capture-*.png
+/assets/_*.png
 /state-*.png

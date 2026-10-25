@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Muo's app icon.
+
+  The mark is the letter M drawn as two reading columns, each a page of text:
+  the M's stems are the columns, its middle vertex the valley between them. It
+  is the app's thesis in one glyph, two columns side by side.
+
+  The plate is warm paper on a warm ground, the same pair the app's window uses,
+  so the icon in the Dock and the window it opens are the same material.
+
+  Drawn at 1024 with an 824 plate, which is Apple's icon grid: the artwork sits
+  inside a rounded square that is 80.5% of the canvas, leaving the margin macOS
+  expects so icons line up in the Dock.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- The plate: warm paper, very slightly graded so it reads as a surface
+         rather than a flat swatch. -->
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf9"/>
+      <stop offset="1" stop-color="#f2ece2"/>
+    </linearGradient>
+
+    <!-- The ink, warm brown-black, never pure black. -->
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b2724"/>
+      <stop offset="1" stop-color="#141210"/>
+    </linearGradient>
+
+    <!-- The accent, the app's own blue, for the one mark that carries meaning. -->
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a6f96"/>
+      <stop offset="1" stop-color="#2f4b68"/>
+    </linearGradient>
+
+    <!-- A hairline of light along the plate's top edge, as a real surface catches it. -->
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- The shadow the plate casts on the ground behind it. -->
+    <filter id="cast" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#3a2f24" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <!-- The ground: transparent, so the plate's own shadow shows the desktop through.
+       macOS draws its own backdrop; a filled square would look pasted on. -->
+
+  <g filter="url(#cast)">
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#plate)"/>
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="none" stroke="#e0d8cb" stroke-width="3"/>
+    <rect x="101.5" y="101.5" width="821" height="821" rx="184.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  </g>
+
+  <!-- The mark: two columns of text, and the M they form.
+
+       Each column is a page: a heading rule, then lines of body text that
+       shorten as they descend, the way a paragraph does. The two columns are
+       the M's stems; the accent diagonal between them is its valley. -->
+  <g>
+    <!-- Left column -->
+    <g fill="url(#ink)">
+      <rect x="256" y="300" width="176" height="26" rx="13"/>
+      <rect x="256" y="362" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="256" y="404" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="256" y="446" width="140" height="16" rx="8" opacity="0.82"/>
+      <rect x="256" y="488" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="256" y="530" width="112" height="16" rx="8" opacity="0.82"/>
+    </g>
+
+    <!-- Right column -->
+    <g fill="url(#ink)">
+      <rect x="592" y="300" width="176" height="26" rx="13"/>
+      <rect x="592" y="362" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="592" y="404" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="592" y="446" width="140" height="16" rx="8" opacity="0.82"/>
+      <rect x="592" y="488" width="176" height="16" rx="8" opacity="0.82"/>
+      <rect x="592" y="530" width="112" height="16" rx="8" opacity="0.82"/>
+    </g>
+
+    <!-- The valley: the M's middle, in the accent, running down between the
+         columns and landing on the baseline they share. -->
+    <path d="M 432 300 L 512 424 L 592 300"
+          fill="none" stroke="url(#accent)" stroke-width="30"
+          stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- The baseline: one rule under both columns, which is what makes them a
+         page rather than two lists. -->
+    <rect x="256" y="612" width="512" height="6" rx="3" fill="url(#ink)" opacity="0.22"/>
+  </g>
+</svg>

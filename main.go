@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,12 @@ import (
 
 	"example.com/muo/muo"
 )
+
+// iconPNG is the window's icon, embedded so a plain `go build` carries it too.
+// The packaged builds read resources/icon.png and resources/icon.icns instead.
+//
+//go:embed resources/icon.png
+var iconPNG []byte
 
 func main() {
 	// A file named on the command line is opened first; anything opened later
@@ -74,6 +81,13 @@ func main() {
 			Vibrancy: mygo.VibrancySidebar,
 			Content:  ui.View(r.FrameView),
 		})
+		// The window's own icon, so the taskbar and the title bar carry the mark
+		// even in a plain `go build`, which embeds none of the app's resources.
+		// A packaged build gets it from resources/icon.png instead, and macOS
+		// from resources/icon.icns.
+		if err := win.SetIcon(iconPNG); err != nil {
+			fmt.Fprintln(os.Stderr, "muo: setting the icon:", err)
+		}
 		// A window remembers its bounds, which is right until it is reopened on
 		// a display smaller than the one it was last on: the saved size is then
 		// wider than the screen and the right-hand end of the title row — the
