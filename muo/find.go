@@ -103,7 +103,13 @@ func (r *Reader) findBar(c *ui.Context) {
 		r.match = 0
 	}
 	ui.Row(c).Grow(1).MaxWidth(560).Children(func() {
-		ui.FindBar(c, &r.finding, &r.query, len(matches), &r.match).Radius(8)
+		bar := ui.FindBar(c, &r.finding, &r.query, len(matches), &r.match)
+		// The bar is the app's, not the toolkit's default: it sits on the page's
+		// own paper with the page's rule, so a search is something the page does
+		// rather than a control pasted over it.
+		t := c.Theme()
+		bar.Radius(8).Background(t.Surface).
+			Border(1, t.Border.Alpha(0.8))
 	})
 	if !r.finding {
 		return

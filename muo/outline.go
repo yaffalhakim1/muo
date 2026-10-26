@@ -74,7 +74,7 @@ func (r *Reader) MinWidth() float32 {
 	if column <= 0 {
 		column = 420
 	}
-	return sidebarWidth + column + pageMargin*2
+	return leftPanelWidth + column + pageMargin*2
 }
 
 // pageMargin is the space between the page's text and the pane's edges.

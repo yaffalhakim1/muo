@@ -80,6 +80,10 @@ type Reader struct {
 	// which file, and where in this file.
 	showLibrary bool
 	showOutline bool
+	// zen folds both panes away and hides the status pill, leaving the page and
+	// the header. It is a reading mode, not a pane state: coming out of it
+	// restores the panes the reader had, so it never costs them a decision.
+	zen bool
 	// narrowLibrary and narrowOutline are the reader's explicit request for a
 	// pane at a width where it would otherwise yield to the page.
 	narrowLibrary bool
@@ -100,6 +104,12 @@ type Reader struct {
 	// kept for the tests that click its rows by position, since a heading's
 	// words appear twice on screen and a click by text finds the page's.
 	outlineBounds ui.Rect
+	// outlineRows are the outline's row boxes, one per heading, for the same
+	// reason.
+	outlineRows []ui.Rect
+	// callouts maps a block index to the callout kind it was, for the quotes the
+	// page drew as callouts. It is rebuilt every frame with the page.
+	callouts map[int]calloutKind
 	// outlineX is the outline pane's left edge this frame, which slides as it
 	// folds. The tests read it to check the pane glides rather than vanishing.
 	outlineX float32
@@ -116,6 +126,12 @@ type Reader struct {
 
 	// outlineW is the width of the right pane, the document's outline.
 	outlineW float32
+
+	// libReveal and outReveal are how much of each panel is on screen this frame,
+	// from 0 to 1, animated by the row that holds them. They are kept here because
+	// the measure is solved from the page's width before the row is built.
+	libReveal float32
+	outReveal float32
 
 	// page is the content's own box, measured to learn the real page width.
 	page ui.Handle
@@ -158,8 +174,8 @@ func New() *Reader {
 		showOutline:    outline,
 		jumpToBlock:   -1,
 		shownMatch:    -1,
-		sidebarW:      clampSidebar(layout.SidebarWidth),
-		outlineW:      clampOutline(layout.OutlineWidth),
+		sidebarW:      clampPanel(layout.SidebarWidth),
+		outlineW:      clampPanel(layout.OutlineWidth),
 	}
 }
 
@@ -209,6 +225,7 @@ func (r *Reader) OpenIn(path string) {
 	if r.window != nil {
 		go func() { _ = mygo.App.AddRecentDocument(abs) }()
 	}
+	touchRecent(abs)
 	r.documentChanged()
 }
 
@@ -423,20 +440,28 @@ func (r *Reader) recompute(c *ui.Context) {
 	// hidden pane would keep costing the page its width. Each takes its width plus
 	// the divider's own line.
 	//
-	// The pane shown is the one that will be shown this frame, which is not the
-	// same as the reader's preference: a pane that yields at a narrow width must
-	// not be subtracted, or the page would be solved for a width it does not have.
+	// It is solved from the panels' destinations, not from their animated reveal,
+	// so the column is one width for the whole of a slide. Feeding it the reveal
+	// re-solved the measure every frame, which re-broke every paragraph every
+	// frame: a document's worth of text layout between each pair of frames, which
+	// is a stutter on a 60 Hz display and unusable on a 240 Hz one.
+	//
+	// The pane counted is the one that will be shown, which is not the same as the
+	// reader's preference: a pane that yields at a narrow width must not be
+	// subtracted, or the page would be solved for a width it does not have.
 	pageW := float64(cw)
 	if r.libraryShown(c) {
-		pageW -= float64(clampSidebar(r.sidebarW)) + 1
+		pageW -= float64(leftPanelWidth)
 	}
 	if r.outlineShown(c) {
-		pageW -= float64(clampOutline(r.outlineW)) + 1
+		pageW -= float64(rightPanelWidth)
 	}
 	if pageW < 240 {
 		pageW = float64(cw)
 	}
-	r.typ = Model(*d, pageW, r.ppiFor(w), "", manual)
+	// The column is solved in the family the page is drawn in, so the measure
+	// the readout reports is the one the reader is actually looking at.
+	r.typ = Model(*d, pageW, r.ppiFor(w), pageFamily, manual)
 }
 
 // ppiFor estimates the density the window is drawn at. MyGo reports DIPs, so

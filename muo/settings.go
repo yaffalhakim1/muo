@@ -27,7 +27,7 @@ func (r *Reader) settingsView(c *ui.Context) {
 		// panes change places without the window jumping. It clears the window
 		// controls, which sit over the content when the title bar is inset.
 		ui.Row(c).Height(titleBarHeight).Shrink(0).AlignItems(ui.Center).
-			Padding(0, bar.Right+20, 0, titleLeft).Children(func() {
+			Padding(0, settingsInsetRight(bar), 0, settingsInsetLeft(bar)).Children(func() {
 				ui.Text(c, "Reading Settings").FontSize(typeTitle3).FontWeight(600).
 					LetterSpacing(-0.1)
 				ui.Spacer(c)
@@ -54,20 +54,38 @@ func (r *Reader) settingsView(c *ui.Context) {
 	})
 }
 
-// specimen is the type being chosen, shown. It is the same reading measure the
-// page uses, so what the reader judges here is what they will read.
+// settingsInsetLeft and settingsInsetRight are the settings pane's title row
+// insets: the same rule as the header's, so the two panes change places without
+// the window's controls landing on a title. The right side takes a little more
+// room than the header does, because the pane's Done command sits there and it
+// must not sit under a window button either.
+func settingsInsetLeft(bar ui.TitleBar) float32 {
+	left, _ := headerInsets(bar)
+	return left
+}
+
+func settingsInsetRight(bar ui.TitleBar) float32 {
+	_, right := headerInsets(bar)
+	return right + 8
+}
+
+// specimen is the type being chosen, shown. It is the same reading measure the// page uses, so what the reader judges here is what they will read.
 func (r *Reader) specimen(c *ui.Context, pal pagePalette) {
 	t := c.Theme()
 	ui.Column(c).FillWidth().Padding(t.Space(5)).Radius(12).Gap(t.Space(3)).
 		Background(uiRGB(mixColor(pal.paper, pal.ink, 0.035))).
 		Border(1, uiRGB(mixColor(pal.paper, pal.ink, 0.05))).
 		Children(func() {
-			ui.Text(c, "The measure comes first").
-				FontSize(r.typ.FontPx * 0.88).FontWeight(600).
+			ui.Text(c, "The measure comes first").Font(pageFamily).
+				FontSize(r.typ.FontPx * 0.88).FontWeight(headingWeights[1]).
 				LetterSpacing(-r.typ.FontPx * 0.012).
-				TextColor(pal.inkColor())
+				TextColor(uiRGB(triple(palette(pal.dark).ink)))
+			// The body is set in the page's own face, because a specimen in a
+			// different face from the page is a specimen of nothing: the reader
+			// is choosing a size for a serif, and the width of a serif's lines is
+			// what the measure is solved from.
 			ui.Text(c, "The largest effect on reading comfort is how many characters sit on a line. This paragraph is set at the size and measure the page would give it.").
-				FontSize(r.typ.FontPx).LineHeight(r.typ.Line).
+				Font(pageFamily).FontSize(r.typ.FontPx).LineHeight(r.typ.Line).
 				TextColor(pal.inkColor())
 			ui.Row(c).FillWidth().Gap(t.Space(2)).AlignItems(ui.Center).Children(func() {
 				typeReadout(c, r.typ)

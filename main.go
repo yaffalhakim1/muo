@@ -31,6 +31,13 @@ func main() {
 
 	r := muo.New()
 
+	// The page's face is registered by the package as it loads; this only
+	// reports it. A failure is not fatal: the page falls back to the system's
+	// serif rather than keeping the reader out of the app over a font.
+	if err := muo.PageFontError(); err != nil {
+		fmt.Fprintln(os.Stderr, "muo: registering the page font:", err)
+	}
+
 	// The window follows the desktop's appearance, not the app's
 	// (dark-mode.md › Best practices).
 	mygo.Theme.SetSource(mygo.ThemeSystem)

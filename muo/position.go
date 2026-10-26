@@ -83,7 +83,10 @@ func (r *Reader) applyRestore() {
 // the bug these positions exist to prevent.
 func (r *Reader) Save() error {
 	r.rememberWhereWeAre()
-	return saveState()
+	if err := saveState(); err != nil {
+		return err
+	}
+	return saveRecentTimes()
 }
 
 // ScrolledToEnd reports whether the page is at its bottom, for the callers that

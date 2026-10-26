@@ -107,8 +107,8 @@ func saveLayout(l layoutState) error {
 func (r *Reader) SaveLayout() error {
 	library, outline := r.showLibrary, r.showOutline
 	return saveLayout(layoutState{
-		SidebarWidth: clampSidebar(r.sidebarW),
-		OutlineWidth: clampOutline(r.outlineW),
+		SidebarWidth: clampPanel(r.sidebarW),
+		OutlineWidth: clampPanel(r.outlineW),
 		Library:      &library,
 		Outline:      &outline,
 	})
