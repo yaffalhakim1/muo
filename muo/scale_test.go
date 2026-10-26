@@ -31,7 +31,7 @@ func TestChromeUsesOneScale(t *testing.T) {
 		theme.FontSize, theme.Spacing, theme.Radius)
 
 	// The library toggle sits inside the title bar, not clipped by it.
-	rect, ok := tt.Find("Hide Library")
+	rect, ok := tt.Find("Hide Files")
 	if !ok {
 		t.Fatal("the library toggle has no accessible label")
 	}

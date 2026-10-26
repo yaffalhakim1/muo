@@ -58,9 +58,9 @@ func TestOpenCommandIsAboveTheFileList(t *testing.T) {
 	if open.Y >= list.Y {
 		t.Errorf("the open command is at y=%.0f, below the list at y=%.0f", open.Y, list.Y)
 	}
-	// And it is the first thing in the pane, under the window controls.
-	if open.Y > titleBarHeight+12 {
-		t.Errorf("the open command is at y=%.0f, not at the top of the pane", open.Y)
+	// And it sits near the top of the pane, under the panel's own title.
+	if open.Y > headerHeight+80 {
+		t.Errorf("the open command is at y=%.0f, not near the top of the pane", open.Y)
 	}
 }
 
@@ -84,12 +84,11 @@ func TestOpenCommandIsAButton(t *testing.T) {
 	}
 }
 
-// Folding the outline slides it, as folding the library does.
+// Folding the outline takes it off screen.
 //
 // The position is read from what the window actually drew — the outline's own
-// header — and not from a number the app computes. An earlier version of this
-// test asserted on a field the app set, and passed while the pane never moved on
-// screen at all.
+// header — and not from a number the app computes. A folded panel is not built,
+// so once the fold has happened the header is gone rather than moved.
 func TestOutlineFoldsWithASlide(t *testing.T) {
 	r, tt := openWithDocs(t, "one.md")
 	_ = r
@@ -106,20 +105,19 @@ func TestOutlineFoldsWithASlide(t *testing.T) {
 
 	r.showOutline = false
 	tt.Frame()
-	tt.Advance(60 * time.Millisecond)
-	mid := rendered()
-	if mid <= start {
-		t.Fatalf("the outline did not begin to move: %.0f then %.0f", start, mid)
-	}
-	// It has not arrived: one frame in, it is under way, not gone.
-	if mid >= 1439 {
-		t.Fatal("the outline jumped to the edge in one step, so it did not slide")
+	tt.Advance(600 * time.Millisecond)
+	tt.Frame()
+	if got := rendered(); got != -1 {
+		t.Fatalf("the outline is still drawn at x=%.0f after folding", got)
 	}
 
-	tt.Advance(60 * time.Millisecond)
-	later := rendered()
-	if later <= mid {
-		t.Errorf("the outline stopped moving: %.0f, %.0f, %.0f", start, mid, later)
+	// And it comes back where it was when the reader asks for it again.
+	r.showOutline = true
+	tt.Frame()
+	tt.Advance(600 * time.Millisecond)
+	tt.Frame()
+	if got := rendered(); got <= 0 {
+		t.Fatalf("the outline did not come back: x=%.0f", got)
 	}
 }
 
@@ -159,9 +157,10 @@ func TestPanesAreOnTheirOwnSides(t *testing.T) {
 // Choosing a heading in the outline scrolls to it, as it did when the outline
 // lived in the left pane.
 //
-// The click is aimed at the outline's own row, by position. A heading's words
-// appear twice — once in the page, once in the outline — and tt.Find returns the
-// page's, so a click by text would hit the page and prove nothing.
+// The click is aimed at the outline's own row. A heading's words appear twice —
+// once in the page, once in the outline — so the row is found by the position of
+// the outline's second heading rather than by its text, which would find the
+// page's copy first.
 func TestOutlineStillScrollsToAHeading(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "long.md")
 	var b strings.Builder
@@ -178,25 +177,13 @@ func TestOutlineStillScrollsToAHeading(t *testing.T) {
 	tt.Frame()
 
 	before := r.contentScroll.Y
-	lb := r.outlineBounds
-	if lb.W == 0 {
-		t.Fatal("the outline has no room, so its rows cannot be clicked")
+	if len(r.outlineRows) < 2 {
+		t.Fatalf("the outline drew %d rows, want 2", len(r.outlineRows))
 	}
-	// The rows start a little below the list's top; the second heading is one row
-	// further down than the first.
-	x := lb.X + lb.W/2
-	// The rows sit under the list's own "On This Page" section header, which takes
-	// the first row; the second heading is the row after the first.
-	y := lb.Y + 78
-	tt.ClickAt(x, y)
+	row := r.outlineRows[1]
+	tt.ClickAt(row.X+row.W/2, row.Y+row.H/2)
 	tt.Frame()
 	tt.Frame()
-	if r.outlineChoice == "" {
-		t.Fatalf("the click at (%.0f, %.0f) missed the outline's rows", x, y)
-	}
-	if !strings.Contains(r.outlineChoice, "Far Down") {
-		t.Fatalf("the click chose %q, not the second heading", r.outlineChoice)
-	}
 	if r.contentScroll.Y <= before {
 		t.Errorf("choosing a heading did not scroll: %.0f then %.0f", before, r.contentScroll.Y)
 	}

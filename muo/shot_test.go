@@ -30,6 +30,12 @@ func TestShots(t *testing.T) {
 	if err := os.WriteFile(all, []byte(everyBlock), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// A document with one of each callout, so their tints and labels can be
+	// looked at rather than inferred from the text tree.
+	callouts := filepath.Join(dir, "callouts.md")
+	if err := os.WriteFile(callouts, []byte(everyCallout), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	type shot struct {
 		name   string
@@ -60,6 +66,12 @@ func TestShots(t *testing.T) {
 			r.finding = true
 			r.query = "measure"
 		}},
+		{name: "zen-light", width: 1100, height: 760, setup: func(r *Reader) {
+			r.OpenIn(sample)
+			r.zen = true
+		}},
+		{name: "callouts-light", width: 900, height: 900, setup: func(r *Reader) { r.OpenIn(callouts) }},
+		{name: "callouts-dark", width: 900, height: 900, dark: true, setup: func(r *Reader) { r.OpenIn(callouts) }},
 		{name: "narrow-light", width: 720, height: 620, setup: func(r *Reader) { r.OpenIn(sample) }},
 	}
 

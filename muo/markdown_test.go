@@ -12,6 +12,15 @@ import (
 // A document with one of every block the renderer draws, so that a change to the
 // page's theme or the heading hook is exercised against all of them at once
 // rather than against the paragraph that happens to be in the sample.
+const everyCallout = "# Callouts\n\n" +
+	"> [!NOTE]\n> Useful information that users should know, even when skimming.\n\n" +
+	"> [!TIP]\n> Helpful advice for doing things better or more easily.\n\n" +
+	"> [!IMPORTANT]\n> Key information users need to know to achieve their goal.\n\n" +
+	"> [!WARNING]\n> Urgent info that needs immediate user attention.\n\n" +
+	"> [!CAUTION]\n> Advises about risks or negative outcomes of certain actions.\n\n" +
+	"An ordinary quote, which must stay a quote:\n\n" +
+	"> A quote that merely mentions a bracket, [like this].\n"
+
 const everyBlock = "# Title one\n\n" +
 	"A paragraph with **bold**, *italic*, `code`, a [link](https://example.com) and a footnote[^1].\n\n" +
 	"## Title two\n\n" +
@@ -189,7 +198,7 @@ func TestPageEndsWithAMark(t *testing.T) {
 	tt := ui.NewTester(r.FrameView, 1000, 900)
 	tt.Frame()
 	tt.Frame()
-	if !tt.HasText("· · ·") {
+	if _, ok := tt.Find("End of document"); !ok {
 		t.Error("the page has no end mark")
 	}
 }

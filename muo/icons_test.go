@@ -69,7 +69,7 @@ func TestLibraryToggleIconIsCentered(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 
-	button, ok := tt.Find("Hide Library")
+	button, ok := tt.Find("Hide Files")
 	if !ok {
 		t.Fatal("the library toggle was not found")
 	}
