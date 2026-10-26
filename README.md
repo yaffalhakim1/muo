@@ -3,7 +3,7 @@
 A markdown reader that sizes type from your screen and your viewing distance, then
 holds the line at 72 characters.
 
-![Muo with a document open, three panes: files, page, outline](docs/shots/reading-light.png)
+![Muo with a document open: the files panel on the left, the reading column in the middle, and the page outline on the right](docs/shots/reading-light.png)
 
 ## The idea
 
@@ -25,17 +25,31 @@ on one screen and wrong on the other.
 
 ## What it does
 
-- **Three panes.** Files, page, and the document's own headings. Every divider drags.
-  Every pane folds away and comes back where you left it.
+- **A page, not a form.** One centred column of prose in a serif cut bundled with
+  the app, with the files and the outline as panels either side. Both panels fold
+  and slide, and the column keeps its measure while they do.
 - **Find that marks the page.** Every match is highlighted where it sits, headings
   included. Enter walks them.
 - **PDF search.** Find reads the page text and turns to the page the match is on.
 - **Code you can tidy.** Go and JSON go through the standard library. Other languages
   get spacing and indentation that never reaches inside a string or a comment.
-- **It remembers.** Your place in each document, pane widths, which panes you folded,
-  and the files you had open.
+- **It remembers.** Your place in each document, which panels you folded, the files
+  you had open, and when you last read each one.
 - **One dependency.** Go, drawn on the GPU by [MyGo](https://github.com/egoist/mygo).
   No webview, no JavaScript runtime, no frontend build.
+
+## The window
+
+The header carries the document's name, what the type model solved for this screen,
+and the commands. The two panels answer the two questions a reader has while
+reading — which file, and where in this file — and either can be folded away with
+⌘B or the header's toggle. Zen folds both panels and the status pill so the page
+has the whole window; the header stays, so the way out is where you left it.
+
+The measure is the same promise in every state: 72 characters, or as many as the
+window can actually hold. The pill at the foot of the page reports the count, the
+size, and how far through the document you are, and its two buttons step the type
+size without leaving the page.
 
 ## Build
 
@@ -94,7 +108,8 @@ copy.
 muo/
 ├── pdf/       the PDF parser, interpreter and rasterizer, with no dependency on the app
 ├── code/      the code formatter and tab expansion
-└── *.go       the reader: frame, settings, theme, outline, find
+├── fonts/     the page's serif, bundled so the measure is the same on every platform
+└── *.go       the reader: frame, panels, header, pill, settings, theme, find
 ```
 
 `pdf` and `code` build standalone. The app imports them and nothing else.
