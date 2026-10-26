@@ -36,6 +36,14 @@ func (r *Reader) markdownOptions(c *ui.Context, pal pagePalette) *markdown.Optio
 			r.headingBlock(c, d, i, pal)
 			return true
 		}
+		// A callout is a quote the renderer knows nothing about. The marker is
+		// stripped from the source before the page is drawn, so by the time this
+		// runs the quote is an ordinary one; the block's index is what tells the
+		// hook which kind it was.
+		if kind, ok := r.calloutAt(i); ok {
+			r.calloutBlock(c, pal, d, i, kind)
+			return true
+		}
 		// The block itself stays the renderer's to draw. What is added is a
 		// marker: a row with no height, built just before the block in the same
 		// parent, and bound to a handle so Find can scroll to it.
@@ -48,7 +56,8 @@ func (r *Reader) markdownOptions(c *ui.Context, pal pagePalette) *markdown.Optio
 		start, end := r.markShift(b.Start, b.End)
 		r.anchors = append(r.anchors, anchor{start: start, end: end, handle: h})
 		r.followFind(row, start, end)
-		return false}
+		return false
+	}
 	return opts
 }
 
@@ -104,13 +113,20 @@ func (r *Reader) headingBlock(c *ui.Context, d *parser.Document, i int, pal page
 		// highlight at all — the worst kind of bug, because the count said the
 		// search had worked.
 		text := ui.RichText(c, r.headingSpans(d, i, pal)...)
-		text.FontSize(size).
+		text.Font(pageFamily).FontSize(size).
 			FontWeight(headingWeight(b.Level)).
 			// Large type wants its letters closer, small type wants them
 			// further apart; one tracking value for every size is wrong at one
-			// end or the other, so it follows the size.
-			LetterSpacing(-size * 0.012).
-			TextColor(pal.inkColor())
+			// end or the other, so it follows the size. The design sets its
+			// titles at -0.04em; this approaches that at the title's size and
+			// relaxes as the heading gets smaller, which is what optical sizing
+			// does for a face that carries it.
+			//
+			// A serif carries less tracking than a sans: its sidebearings are
+			// already tighter at display sizes, and past about -0.02em the
+			// letters begin to touch, which at 55 DIPs is visible as a collision.
+			LetterSpacing(-size * 0.016).
+			TextColor(uiRGB(triple(palette(pal.dark).ink)))
 	})
 	// A heading chosen in the outline comes into view in the frame it is
 	// chosen, which is what ScrollIntoView is for.
@@ -167,32 +183,36 @@ func (r *Reader) headingSpans(d *parser.Document, i int, pal pagePalette) []ui.S
 // size alone, so that a page of nested headings does not turn into a wall of
 // bold.
 func headingWeight(level int) int {
-	if level <= 1 {
-		return 700
+	if level < 1 || level > 6 {
+		return headingWeights[5]
 	}
-	return 600
+	return headingWeights[level-1]
 }
+
+// headingScale is the one place the page's heading sizes live, in multiples of
+// the body size. It was copied in two places — the renderer's theme and the
+// reader's own heading drawing — and the two drifted the moment one was changed.
+//
+// The shape is the design's: an article's title is much larger than what
+// follows, and the rest step down quickly, because a serif carries hierarchy at
+// a smaller size difference than a sans does. The scale stops at the body size
+// and never goes below it: a heading smaller than the paragraph it introduces
+// reads as a footnote, so past level four weight and space carry the hierarchy
+// and the size stays where the text is.
+var headingScale = [6]float32{2.35, 1.45, 1.22, 1.08, 1.0, 1.0}
+
+// headingWeights are the heading weights, likewise in one place. A serif at 700
+// is a slab of ink; 500 holds the hierarchy and keeps the page calm, which is
+// the posture the design asks for.
+var headingWeights = [6]int{500, 500, 500, 500, 500, 500}
 
 // headingPx is a heading's type size, from the body size: the page's hierarchy
 // stays proportional as the reader changes size.
-//
-// The scale stops at the body size and never goes below it. It used to shrink
-// the last two levels to 0.95 and 0.9 of the body, which made an h5 smaller than
-// the paragraph it introduced — so the deepest headings read as a footnote
-// rather than as a heading. Past level four, weight carries the hierarchy and
-// size stays where the text is.
-//
-// The top steps are wide on purpose. At a reading size of about 17 pt, a three
-// point difference between levels is invisible, so an h2, h3 and h4 at 1.28,
-// 1.12 and 1.02 of the body read as three identical headings and the page loses
-// its shape. Each step is at least a tenth of the body until the scale reaches
-// the body's own size, where weight and space take over.
 func (r *Reader) headingPx(level int) float32 {
-	scale := [6]float32{1.62, 1.36, 1.18, 1.06, 1.0, 1.0}
 	if level < 1 || level > 6 {
 		return r.typ.FontPx
 	}
-	return r.typ.FontPx * scale[level-1]
+	return r.typ.FontPx * headingScale[level-1]
 }
 
 // resolveHeadings turns each heading's rectangle into an offset from the top of
@@ -217,7 +237,17 @@ func (r *Reader) resolveHeadings(c *ui.Context) {
 		if box.H == 0 {
 			continue
 		}
-		if offset := box.Y - column.Y + r.contentScroll.Y; offset >= 0 {
+		// The anchor is the reading column, which is itself inside the scroll, so
+		// the distance between the two is already the heading's offset in the
+		// page's content — the scroll has moved both of them together.
+		//
+		// Adding the scroll offset here was wrong, and it was wrong in a way that
+		// hid: at the top of a page the scroll is zero, so every heading measured
+		// correctly and every test that never scrolled passed. Scroll down and each
+		// offset grew by the distance scrolled, so the outline's idea of where the
+		// reader was drifted further from the page the further they read, and a
+		// saved position pointed past the end of the document.
+		if offset := box.Y - column.Y; offset >= 0 {
 			h.Offset = offset
 		}
 	}

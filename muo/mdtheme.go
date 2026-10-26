@@ -18,23 +18,30 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 
 	md.FontSize = r.typ.FontPx
 	md.LineHeight = r.typ.Line
+	// The page is set in the reader's serif, and the measure was solved in the
+	// same family: a column computed in one face and drawn in another is a
+	// measure that is wrong by however much the two differ.
+	md.Font = pageFamily
 	md.Text = pal.inkColor()
-	md.Strong = pal.inkColor()
+	md.Strong = uiRGB(triple(palette(pal.dark).ink))
 	md.Muted = pal.mutedColor()
 	// Links take the accent as a *text* colour, which in the dark is the lighter
 	// of the two: the deeper one that fills the primary button would sit at
 	// 2.6:1 on the page, which is not a link, it is a rumour.
 	md.Link = uiRGB(triple(palette(pal.dark).accent))
 	md.Rule = pal.ruleColor()
-	md.QuoteBar = pal.ruleColor()
+	// The quote is a quiet passage, not a box: a hairline bar in the rule's own
+	// colour and the words in the muted ink, italic in the serif's own voice.
+	md.QuoteBar = uiRGB(mixColor(pal.rule, pal.ink, 0.12))
+	md.QuoteBarWidth = 2
 	md.QuoteText = pal.mutedColor()
 	md.TableBorder = pal.ruleColor()
-	// Prose wants more air between paragraphs than the renderer's default: at a
-	// 1.58 line height, 0.75 em between blocks leaves paragraphs reading as one
-	// run of text rather than as separate thoughts. A full em is the smallest
-	// gap that still reads as a break at this measure.
-	md.BlockSpacing = 1.0
-	md.ItemSpacing = 0.32
+	// Prose wants more air between paragraphs than the renderer's default: the
+	// design sets 1.25rem of space between blocks on a 1.05rem body, which is a
+	// full em and a quarter. At a 1.8 line height anything tighter leaves
+	// paragraphs reading as one run of text rather than as separate thoughts.
+	md.BlockSpacing = 1.25
+	md.ItemSpacing = 0.35
 
 	// Heading colors must be set, not left to the renderer: a zero heading
 	// color takes the window theme's text color, which is the app's ink and not
@@ -46,12 +53,20 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	// reads Top and Bottom from this table, spaces the page the way the sizes
 	// imply. The top step is the widest: a heading has to be clearly a different
 	// size from the body, or it is only bold text with air around it.
-	weights := [6]int{700, 700, 650, 650, 600, 600}
-	tops := [6]float32{1.7, 1.5, 1.3, 1.1, 1.0, 0.9}
-	bottoms := [6]float32{0.62, 0.5, 0.42, 0.34, 0.28, 0.24}
-	sizes := [6]float32{1.62, 1.36, 1.18, 1.06, 1.0, 1.0}
+	// The sizes and weights here are the ones the reader draws its headings
+	// with, from the same tables: the renderer's own margin maths reads Top and
+	// Bottom from this list, so the two must agree or the page spaces headings by
+	// a size it does not draw them at.
+	weights := headingWeights
+	tops := [6]float32{1.9, 1.55, 1.35, 1.15, 1.0, 0.9}
+	bottoms := [6]float32{0.75, 0.55, 0.45, 0.36, 0.28, 0.24}
+	sizes := headingScale
 	for i := range md.Headings {
-		md.Headings[i].Color = pal.inkColor()
+		// Headings take the full-strength ink; the prose under them takes the
+		// softer body ink. That is the design's own split, and it is the right
+		// one: a heading is read in a glance and can spend contrast, a paragraph
+		// cannot.
+		md.Headings[i].Color = uiRGB(triple(palette(pal.dark).ink))
 		md.Headings[i].Weight = weights[i]
 		md.Headings[i].Size = sizes[i]
 		md.Headings[i].Top = tops[i]
@@ -89,7 +104,14 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	md.TableBorder = uiRGB(mixColor(pal.paper, pal.ink, 0.13))
 	// Cells get room to breathe: at the renderer's 0.6 em across, a two-column
 	// table of short words reads as a cramped box rather than as a table.
-	md.TableCellPadding = [2]float32{0.85, 0.6}
+	//
+	// The across value is a full em and not 0.85, and the extra tenth is not
+	// cosmetic. The renderer sizes a column to its widest cell's measured width
+	// plus twice this padding plus one DIP, so the padding is the whole margin a
+	// word has before it wraps. At 0.85 em a heading as short as "Ratio" broke
+	// after five letters, because its measured width landed a fraction of a DIP
+	// inside the column.
+	md.TableCellPadding = [2]float32{1.0, 0.6}
 	md.TableMaxColumn = 26
 
 	md.CodeColors = codeTheme(base, pal, block)

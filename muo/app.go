@@ -104,7 +104,7 @@ type PDFPage struct {
 // and the window around it can never drift into two different neutrals.
 func readingSurface(dark bool) (bg, fg, muted, rule, selection rgbColor) {
 	p := palette(dark)
-	return triple(p.paper), triple(p.ink), triple(p.muted), triple(p.border), triple(p.accent)
+	return triple(p.paper), triple(p.body), triple(p.muted), triple(p.border), triple(p.accent)
 }
 
 // triple drops a palette colour to the plain three bytes the page mixes.
@@ -112,16 +112,22 @@ func triple(c ui.Color) rgbColor { return rgbColor{R: c.R, G: c.G, B: c.B} }
 
 // readingLineHeight tightens measured leading a little as lines get physically
 // shorter: loose leading on a short measure makes paragraphs feel floaty.
+//
+// The numbers are the design's: 1.82 for body prose, 1.8 for the lead, 1.75 for
+// a quote. They are looser than the 1.5–1.6 a sans wants, and that is not a
+// preference: a serif at a 72-character measure has a taller x-height run and
+// more internal contrast than a sans, and the return sweep to the next line
+// needs the extra room to stay reliable.
 func readingLineHeight(fontPx float32) float32 {
 	switch {
 	case fontPx < 17:
-		return 1.55
+		return 1.72
 	case fontPx < 21:
-		return 1.58
+		return 1.8
 	case fontPx < 26:
-		return 1.62
+		return 1.82
 	}
-	return 1.66
+	return 1.84
 }
 
 // sessionStarted keeps time out of the view while leaving the package's

@@ -103,7 +103,7 @@ func TestLineHeightTightensAsLinesShorten(t *testing.T) {
 	if readingLineHeight(15) >= readingLineHeight(22) {
 		t.Fatal("small type should get the tighter leading")
 	}
-	if h := readingLineHeight(22); h < 1.55 || h > 1.7 {
+	if h := readingLineHeight(22); h < 1.7 || h > 1.9 {
 		t.Fatalf("leading %.2f is outside the measured band", h)
 	}
 }

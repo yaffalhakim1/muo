@@ -27,6 +27,12 @@ type inkPalette struct {
 	pressed   ui.Color // a control being pressed
 	border    ui.Color // hairlines and outlines
 	ink       ui.Color // text on the paper
+	// body is the page's prose ink, which is a shade softer than the chrome's.
+	// A heading is short and wants the full contrast; a paragraph runs for
+	// hundreds of words, and the halation of maximum contrast is a documented
+	// fatigue source over a long session. The chrome keeps `ink`, because a
+	// label at 11 points has no such run to spend contrast on.
+	body      ui.Color
 	muted     ui.Color // secondary text, still at 4.5:1 on the paper
 	accent    ui.Color // links, selection, the focus ring
 	accentInk ui.Color // text on a filled accent surface
@@ -53,8 +59,9 @@ func palette(dark bool) inkPalette {
 			raised:     ui.Hex("#242428"),
 			pressed:    ui.Hex("#2e2e33"),
 			border:     ui.Hex("#34343a"),
-			ink:        ui.Hex("#cdc8c2"),
-			muted:      ui.Hex("#928c85"),
+			ink:        ui.Hex("#e8e3db"),
+			body:       ui.Hex("#d6d0c7"),
+			muted:      ui.Hex("#a29a90"),
 			accent:     ui.Hex("#7aa3cc"),
 			accentInk:  ui.Hex("#f2f6fb"),
 			accentFill: ui.Hex("#35618f"),
@@ -65,13 +72,14 @@ func palette(dark bool) inkPalette {
 		}
 	}
 	return inkPalette{
-		paper:      ui.Hex("#faf8f5"),
-		chrome:     ui.Hex("#f3f0ea"),
-		raised:     ui.Hex("#eae6de"),
-		pressed:    ui.Hex("#e0dbd1"),
+		paper:      ui.Hex("#faf8f4"),
+		chrome:     ui.Hex("#f5f1ea"),
+		raised:     ui.Hex("#ebe4d8"),
+		pressed:    ui.Hex("#e2dacb"),
 		border:     ui.Hex("#e3ddd3"),
-		ink:        ui.Hex("#1f1d1b"),
-		muted:      ui.Hex("#6a635b"),
+		ink:        ui.Hex("#1c1a17"),
+		body:       ui.Hex("#2d2a26"),
+		muted:      ui.Hex("#746e65"),
 		accent:     ui.Hex("#3a5a7d"),
 		accentInk:  ui.Hex("#ffffff"),
 		accentFill: ui.Hex("#3a5a7d"),

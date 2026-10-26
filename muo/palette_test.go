@@ -15,8 +15,8 @@ func TestPageColorsFollowTheAppearance(t *testing.T) {
 		wantPaper rgbColor
 		wantInk   rgbColor
 	}{
-		{"light", false, rgbColor{0xfa, 0xf8, 0xf5}, rgbColor{0x1f, 0x1d, 0x1b}},
-		{"dark", true, rgbColor{0x1a, 0x1a, 0x1c}, rgbColor{0xcd, 0xc8, 0xc2}},
+		{"light", false, rgbColor{0xfa, 0xf8, 0xf4}, rgbColor{0x2d, 0x2a, 0x26}},
+		{"dark", true, rgbColor{0x1a, 0x1a, 0x1c}, rgbColor{0xd6, 0xd0, 0xc7}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -60,12 +60,12 @@ func TestPageColorsAgreeWithTheTheme(t *testing.T) {
 		t.Fatalf("the page chose %v but the window theme is %v", got.dark, themeDark)
 	}
 	if themeDark {
-		if got.paper == (rgbColor{0xfa, 0xf8, 0xf5}) {
+		if got.paper == (rgbColor{0xfa, 0xf8, 0xf4}) {
 			t.Fatal("a dark window got the light paper")
 		}
 		return
 	}
-	if got.paper != (rgbColor{0xfa, 0xf8, 0xf5}) {
+	if got.paper != (rgbColor{0xfa, 0xf8, 0xf4}) {
 		t.Fatalf("a light window got paper #%02x%02x%02x", got.paper.R, got.paper.G, got.paper.B)
 	}
 }
