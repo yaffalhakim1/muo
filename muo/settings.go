@@ -76,8 +76,8 @@ func (r *Reader) specimen(c *ui.Context, pal pagePalette) {
 		Background(uiRGB(mixColor(pal.paper, pal.ink, 0.035))).
 		Border(1, uiRGB(mixColor(pal.paper, pal.ink, 0.05))).
 		Children(func() {
-			ui.Text(c, "The measure comes first").Font(pageFamily).
-				FontSize(r.typ.FontPx * 0.88).FontWeight(headingWeights[1]).
+			ui.Text(c, "The measure comes first").Font(pageFamily()).
+				FontSize(r.typ.FontPx * 0.88).FontWeight(headingWeights()[1]).
 				LetterSpacing(-r.typ.FontPx * 0.012).
 				TextColor(uiRGB(triple(palette(pal.dark).ink)))
 			// The body is set in the page's own face, because a specimen in a
@@ -85,7 +85,7 @@ func (r *Reader) specimen(c *ui.Context, pal pagePalette) {
 			// is choosing a size for a serif, and the width of a serif's lines is
 			// what the measure is solved from.
 			ui.Text(c, "The largest effect on reading comfort is how many characters sit on a line. This paragraph is set at the size and measure the page would give it.").
-				Font(pageFamily).FontSize(r.typ.FontPx).LineHeight(r.typ.Line).
+				Font(pageFamily()).FontSize(r.typ.FontPx).LineHeight(r.typ.Line).
 				TextColor(pal.inkColor())
 			ui.Row(c).FillWidth().Gap(t.Space(2)).AlignItems(ui.Center).Children(func() {
 				typeReadout(c, r.typ)

@@ -100,11 +100,28 @@ func TestComfortGradeFollowsTheBand(t *testing.T) {
 }
 
 func TestLineHeightTightensAsLinesShorten(t *testing.T) {
-	if readingLineHeight(15) >= readingLineHeight(22) {
-		t.Fatal("small type should get the tighter leading")
-	}
-	if h := readingLineHeight(22); h < 1.7 || h > 1.9 {
-		t.Fatalf("leading %.2f is outside the measured band", h)
+	// The band depends on the face: a serif is set looser than a sans at the
+	// same measure, because its strokes vary along the line and the return
+	// sweep needs more room. Each face has its own range, and neither is allowed
+	// to drift into the other's.
+	for _, tc := range []struct {
+		family    string
+		small, big float32 // smallest and largest leading the face may use
+	}{
+		{familyNewsreader, 1.7, 1.9},
+		{familyInter, 1.45, 1.7},
+	} {
+		defer func(name string) { pageFamilyName = name }(pageFamilyName)
+		pageFamilyName = tc.family
+
+		if readingLineHeight(15) >= readingLineHeight(22) {
+			t.Errorf("%s: small type should get the tighter leading", tc.family)
+		}
+		h := readingLineHeight(22)
+		if h < tc.small || h > tc.big {
+			t.Errorf("%s: leading %.2f is outside the %s band %.2f–%.2f",
+				tc.family, h, tc.family, tc.small, tc.big)
+		}
 	}
 }
 

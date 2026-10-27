@@ -268,6 +268,7 @@ func (r *Reader) pageContent(c *ui.Context, pal pagePalette) {
 		column := ui.Column(c).Width(r.typ.ColumnW).MaxWidthPercent(100).
 			Bind(&r.column)
 		column.Children(func() {
+			r.lastColumn = column.Bounds()
 			r.resetAnchors()
 			r.resolveHeadings(c)
 			opts := r.markdownOptions(c, pal)

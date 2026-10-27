@@ -113,12 +113,23 @@ func triple(c ui.Color) rgbColor { return rgbColor{R: c.R, G: c.G, B: c.B} }
 // readingLineHeight tightens measured leading a little as lines get physically
 // shorter: loose leading on a short measure makes paragraphs feel floaty.
 //
-// The numbers are the design's: 1.82 for body prose, 1.8 for the lead, 1.75 for
-// a quote. They are looser than the 1.5–1.6 a sans wants, and that is not a
-// preference: a serif at a 72-character measure has a taller x-height run and
-// more internal contrast than a sans, and the return sweep to the next line
-// needs the extra room to stay reliable.
+// The numbers follow the face, because the two faces need different leading for
+// the same measure. A serif at 72 characters has a taller x-height run and more
+// internal contrast, so the return sweep to the next line needs more room —
+// 1.72–1.84. A sans is more even along the line and separates its lines by its
+// open counters alone, so the same leading reads as airy rather than as calm;
+// 1.6 is the range a sans is usually set at, and Typora's own GitHub theme sets
+// 1.6 for exactly this reason.
 func readingLineHeight(fontPx float32) float32 {
+	if pageFamilyName == familyInter {
+		switch {
+		case fontPx < 17:
+			return 1.5
+		case fontPx < 21:
+			return 1.6
+		}
+		return 1.65
+	}
 	switch {
 	case fontPx < 17:
 		return 1.72

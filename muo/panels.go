@@ -3,7 +3,6 @@ package muo
 import (
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -59,11 +58,17 @@ func (r *Reader) workspaceBody(c *ui.Context, t *ui.Theme) {
 	pane := ui.Column(c).Width(leftPanelWidth).Shrink(0).FillHeight().
 		Padding(headerHeight+t.Space(5), t.Space(4), t.Space(4), t.Space(4)).
 		Gap(t.Space(5))
-	if c.Vibrancy() {
-		pane.Background(t.Background.Alpha(0.5))
-	} else {
-		pane.Background(t.Background)
-	}
+	// The pane is opaque, whatever the window's material is.
+	//
+	// It used to be the background at half strength whenever the window had
+	// vibrancy, on the theory that the material would show through and read as
+	// one continuous surface. It does not: MyGo's vibrancy is a material on the
+	// window, not per-pane, so a translucent pane lets the page scrolling
+	// beneath it show through — legible words at the sidebar's left edge, and
+	// grayscale text where the page itself gets ClearType. The chrome is a
+	// surface of its own, and the palette's `chrome` is already the shade that
+	// says so.
+	pane.Background(palette(appearanceDark(c)).chrome)
 	pane.BorderWidth(0, 1, 0, 0).BorderColor(t.Border.Alpha(0.8))
 
 	pane.Children(func() {
@@ -99,16 +104,17 @@ func (r *Reader) panelTitle(c *ui.Context, title, collapseLabel string, collapse
 		Padding(0, 0, t.Space(3), 0).
 		BorderWidth(0, 0, 1, 0).BorderColor(t.Border.Alpha(0.7)).
 		Children(func() {
-			// The design's panel titles are mono, uppercase and widely tracked:
-			// they are labels over a group, not the group's first row, and the
-			// mono is what keeps them from reading as content.
+			// A panel's name is a label over a group, so it is set quieter than
+			// the rows beneath it — in the chrome's own face, sentence case,
+			// and without the wide tracking and small caps it used to wear.
 			//
-			// The uppercase is drawn, not written: the row's accessible name is
-			// the readable form, because a screen reader given "ON THIS PAGE" may
-			// spell it out letter by letter.
-			ui.Text(c, strings.ToUpper(title)).Font("monospace").
-				FontSize(typeSubhead).FontWeight(500).
-				LetterSpacing(0.9).TextColor(t.TextMuted).
+			// Mono capitals in a tracked pair read as a magazine's folio rather
+			// than as an app's pane: it is a treatment for page furniture, and
+			// this is a sidebar. The hierarchy is carried by colour and size,
+			// which the rows below can share, so the panel reads as one list
+			// with a name on it rather than as a printed page with furniture.
+			ui.Text(c, title).FontSize(typeSubhead).FontWeight(600).
+				TextColor(t.TextMuted).
 				SingleLine().Grow(1).Label(title)
 			if b := iconButton(c, iconLeft, collapseLabel, 22, 22); b.Clicked() {
 				collapse(c)
@@ -121,9 +127,8 @@ func (r *Reader) panelTitle(c *ui.Context, title, collapseLabel string, collapse
 // as a hierarchy of labels rather than as three competing headings.
 func sectionLabel(c *ui.Context, label string) {
 	t := c.Theme()
-	ui.Text(c, strings.ToUpper(label)).Font("monospace").
-		FontSize(typeSubhead).FontWeight(500).
-		LetterSpacing(0.8).TextColor(t.TextMuted).
+	ui.Text(c, label).FontSize(typeSubhead).FontWeight(500).
+		TextColor(t.TextMuted).
 		SingleLine().Label(label).Padding(0, t.Space(0.5))
 }
 
@@ -177,17 +182,12 @@ func (r *Reader) openFilesList(c *ui.Context) {
 			}
 			row.Children(func() {
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Space(1.5)).Children(func() {
-					mark := t.TextMuted
-					if active {
-						mark = t.Success
-					}
-					ui.Box(c).Size(5, 5).Radius(3).Shrink(0).Background(mark.Alpha(0.75))
-					ui.Text(c, d.Title).Font("monospace").FontSize(typeCallout).
+					// The active file is marked by its row's face, which is the
+					// same signal every list in this app uses. It used to carry
+					// a coloured dot and the word "active" as well — three marks
+					// for one fact, in a panel that holds a single file.
+					ui.Text(c, d.Title).FontSize(typeCallout).
 						TextColor(t.Text).SingleLine().Grow(1)
-					if active {
-						ui.Text(c, "active").Font("monospace").FontSize(typeFootnote).
-							TextColor(t.TextMuted).SingleLine()
-					}
 				})
 			})
 			if row.Clicked() && !active {
@@ -238,7 +238,7 @@ func (r *Reader) recentFilesList(c *ui.Context) {
 						mark = iconPDF
 					}
 					ui.Icon(c, mark).Size(13, 13).TextColor(t.TextMuted)
-					ui.Text(c, filepath.Base(path)).Font("monospace").FontSize(typeCallout).
+					ui.Text(c, filepath.Base(path)).FontSize(typeCallout).
 						TextColor(t.TextMuted).SingleLine().Grow(1)
 				})
 			})
@@ -316,11 +316,9 @@ func (r *Reader) outlineBody(c *ui.Context, t *ui.Theme) {
 	pane := ui.Column(c).Width(rightPanelWidth).Shrink(0).FillHeight().
 		Padding(headerHeight+t.Space(5), t.Space(4), t.Space(4), t.Space(4)).
 		Gap(t.Space(4))
-	if c.Vibrancy() {
-		pane.Background(t.Background.Alpha(0.5))
-	} else {
-		pane.Background(t.Background)
-	}
+	// Opaque for the same reason as the workspace: a translucent pane lets the
+	// page through and costs the chrome its ClearType.
+	pane.Background(palette(appearanceDark(c)).chrome)
 	pane.BorderWidth(0, 0, 0, 1).BorderColor(t.Border.Alpha(0.8))
 
 	pane.Children(func() {
@@ -328,9 +326,8 @@ func (r *Reader) outlineBody(c *ui.Context, t *ui.Theme) {
 			Padding(0, 0, t.Space(3), 0).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Border.Alpha(0.7)).
 			Children(func() {
-				ui.Text(c, "ON THIS PAGE").Font("monospace").
-					FontSize(typeSubhead).FontWeight(500).
-					LetterSpacing(0.9).TextColor(t.TextMuted).
+				ui.Text(c, "On This Page").FontSize(typeSubhead).FontWeight(600).
+					TextColor(t.TextMuted).
 					SingleLine().Grow(1).Label("On This Page")
 				if b := iconButton(c, iconRight, "Hide Outline Panel", 22, 22); b.Clicked() {
 					r.toggleOutline(c)
@@ -424,10 +421,12 @@ func (r *Reader) outlineFooter(c *ui.Context) {
 		Padding(t.Space(2), 0, 0, 0).
 		BorderWidth(1, 0, 0, 0).BorderColor(t.Border.Alpha(0.7)).
 		Children(func() {
-			ui.Text(c, "Progress").Font("monospace").FontSize(typeFootnote).
-				TextColor(t.TextMuted).SingleLine().Grow(1)
+			// "3 of 12" without the word "Progress" beside it: the row says
+			// where the reader is, and the pill at the foot already reports the
+			// same progress as a percentage. One number each, named by where it
+			// sits rather than by a label it does not need.
 			ui.Text(c, strconv.Itoa(at)+" of "+strconv.Itoa(total)+" sections").
-				Font("monospace").FontSize(typeFootnote).
+				FontSize(typeFootnote).
 				FontFeatures("tnum").TextColor(t.TextMuted).SingleLine()
 		})
 }

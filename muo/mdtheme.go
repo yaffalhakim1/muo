@@ -21,7 +21,7 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	// The page is set in the reader's serif, and the measure was solved in the
 	// same family: a column computed in one face and drawn in another is a
 	// measure that is wrong by however much the two differ.
-	md.Font = pageFamily
+	md.Font = pageFamily()
 	md.Text = pal.inkColor()
 	md.Strong = uiRGB(triple(palette(pal.dark).ink))
 	md.Muted = pal.mutedColor()
@@ -36,12 +36,24 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	md.QuoteBarWidth = 2
 	md.QuoteText = pal.mutedColor()
 	md.TableBorder = pal.ruleColor()
-	// Prose wants more air between paragraphs than the renderer's default: the
-	// design sets 1.25rem of space between blocks on a 1.05rem body, which is a
-	// full em and a quarter. At a 1.8 line height anything tighter leaves
-	// paragraphs reading as one run of text rather than as separate thoughts.
-	md.BlockSpacing = 1.25
-	md.ItemSpacing = 0.35
+	// Space between blocks, and between the lines of a list.
+	//
+	// The gaps come from the measure, not from a taste for air. Typora's serif
+	// theme sets a paragraph gap of 1.5em against a 1.5 line height — one line
+	// of leading exactly — and puts 2.2857em above a heading against 0.75em
+	// below it, a ratio of about three to one. This page wants the same two
+	// relationships at its own leading:
+	//
+	//   paragraph gap  ≈ one line of leading
+	//   space above h  ≈ three times the space below it
+	//
+	// The renderer takes the *maximum* of two adjacent margins rather than
+	// adding them, so a heading's Bottom only ever survives if it is at least
+	// the block spacing. That is why Bottom is not tiny here: a value below
+	// BlockSpacing is silently discarded, which is how the old table asked for
+	// 0.55em below a heading and got 1.25em instead.
+	md.BlockSpacing = 1.5
+	md.ItemSpacing = 0.25
 
 	// Heading colors must be set, not left to the renderer: a zero heading
 	// color takes the window theme's text color, which is the app's ink and not
@@ -57,9 +69,17 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	// with, from the same tables: the renderer's own margin maths reads Top and
 	// Bottom from this list, so the two must agree or the page spaces headings by
 	// a size it does not draw them at.
-	weights := headingWeights
-	tops := [6]float32{1.9, 1.55, 1.35, 1.15, 1.0, 0.9}
-	bottoms := [6]float32{0.75, 0.55, 0.45, 0.36, 0.28, 0.24}
+	weights := headingWeights()
+	// Heading air. Above a heading is where a section separates from what came
+// before it, so that is the gap that carries the split; below a heading the
+// leading of the heading's own last line does most of the work, and the gap only
+// has to be enough not to crowd it.
+	//
+	// The renderer's margins are a maximum, not a sum, against BlockSpacing —
+	// so every Bottom here must be ≥ BlockSpacing or it is discarded. These
+	// values are chosen against that rule rather than in spite of it.
+	tops := [6]float32{2.6, 2.2, 1.9, 1.6, 1.5, 1.5}
+	bottoms := [6]float32{1.5, 1.5, 1.5, 1.5, 1.5, 1.5}
 	sizes := headingScale
 	for i := range md.Headings {
 		// Headings take the full-strength ink; the prose under them takes the
@@ -94,14 +114,22 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	md.Checkbox = uiRGB(triple(palette(pal.dark).accent))
 	md.Mark = ui.RGBA(250, 204, 21, 0.35)
 
-	// Tables are the page's own table: a rule between rows, a tinted header, no
+	// Tables are the page's own table: a tinted header, grade in the rows, no
 	// wide side scroll. The renderer caps each column at TableMaxColumn ems and
 	// adds the cell padding outside that cap, so the cap is widened by the
 	// padding to stop a column from being measured narrower than its text
 	// (which wrapped "Background" into "Backgroun/d").
-	md.TableHeader = uiRGB(mixColor(pal.paper, pal.ink, 0.045))
+	//
+	// The rules are hairlines in the page's own rule ink, not a frame. The
+	// renderer draws an outer border and a vertical rule between every pair of
+	// columns, and none of that is reachable from a theme — but the colour is,
+	// and at 0.06 of the ink those lines read as the same hairline the page
+	// already uses for quotes and dividers, rather than as a spreadsheet grid
+	// pasted between two paragraphs. The header's tint does the work of
+	// separating the head from the body, so the lines do not have to.
+	md.TableHeader = uiRGB(mixColor(pal.paper, pal.ink, 0.055))
 	md.TableStripe = uiRGB(mixColor(pal.paper, pal.ink, 0.018))
-	md.TableBorder = uiRGB(mixColor(pal.paper, pal.ink, 0.13))
+	md.TableBorder = uiRGB(mixColor(pal.paper, pal.ink, 0.06))
 	// Cells get room to breathe: at the renderer's 0.6 em across, a two-column
 	// table of short words reads as a cramped box rather than as a table.
 	//
@@ -111,6 +139,13 @@ func (r *Reader) pageTheme(c *ui.Context, pal pagePalette) *markdown.Theme {
 	// word has before it wraps. At 0.85 em a heading as short as "Ratio" broke
 	// after five letters, because its measured width landed a fraction of a DIP
 	// inside the column.
+	//
+	// The widest column stays at 26 ems. It was briefly raised for the sans on
+	// the theory that Inter's extra width broke the sample's table, and then
+	// measured: the cells are one line at every width from 760 to 1440, on both
+	// faces. The wrap I saw in a live capture was the window being resized
+	// mid-frame, not the cap. A cap that changes with the face would be a second
+	// number to keep in step for no gain.
 	md.TableCellPadding = [2]float32{1.0, 0.6}
 	md.TableMaxColumn = 26
 

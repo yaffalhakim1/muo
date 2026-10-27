@@ -1,7 +1,7 @@
 {
   "name": "Muo",
   "identifier": "com.muo.reader",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "out": "build",
   "fileAssociations": [
     { "ext": ["md", "markdown"], "name": "Markdown Document", "mimeType": "text/markdown", "role": "Viewer" },

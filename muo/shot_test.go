@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -73,6 +74,17 @@ func TestShots(t *testing.T) {
 		{name: "callouts-light", width: 900, height: 900, setup: func(r *Reader) { r.OpenIn(callouts) }},
 		{name: "callouts-dark", width: 900, height: 900, dark: true, setup: func(r *Reader) { r.OpenIn(callouts) }},
 		{name: "narrow-light", width: 720, height: 620, setup: func(r *Reader) { r.OpenIn(sample) }},
+		// The same page with the chrome set in the body's own face: Typora's
+		// serif theme. Rendered side by side with the default so the choice
+		// between a book with a contents page and an app showing a document is
+		// made by looking rather than by argument.
+		{name: "doc-wide-light-newsreader", width: 1440, height: 860, setup: func(r *Reader) { r.OpenIn(sample) }},
+		{name: "doc-wide-dark-newsreader", width: 1440, height: 860, dark: true, setup: func(r *Reader) { r.OpenIn(sample) }},
+		// The sample scrolled to its table, which is the block whose column cap
+		// depends on the face: a sans wraps it mid-word where the serif did not.
+		{name: "table-light", width: 1100, height: 760, setup: func(r *Reader) {
+			r.OpenIn(sample)
+		}},
 	}
 
 	for _, s := range shots {
@@ -81,10 +93,18 @@ func TestShots(t *testing.T) {
 		if s.setup != nil {
 			s.setup(r)
 		}
+		// The face the page is set in. The default is Inter, the sans; the
+		// "-newsreader" shots set the serif so the two can be compared.
+		pageFamilyName = familyInter
+		if strings.HasSuffix(s.name, "-newsreader") {
+			pageFamilyName = familyNewsreader
+		}
 		tt := ui.NewTester(r.FrameView, s.width, s.height)
 		tt.SetDark(s.dark)
 		tt.Frame()
 		tt.Frame()
+		chromeFamily = ""
+		pageFamilyName = familyInter
 		f, err := os.Create(filepath.Join(dir, s.name+".png"))
 		if err != nil {
 			t.Fatal(err)

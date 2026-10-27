@@ -25,11 +25,12 @@ on one screen and wrong on the other.
 
 ## What it does
 
-- **A page, not a form.** One centred column of prose in a serif cut bundled with
-  the app, with the files and the outline as panels either side. Both panels fold
-  and slide, and the column keeps its measure while they do.
+- **A page, not a form.** One centred column of prose in a face bundled with the
+  app, with the files and the outline as panels either side. Both panels fold and
+  slide, and the column keeps its measure while they do.
 - **Find that marks the page.** Every match is highlighted where it sits, headings
-  included. Enter walks them.
+  included. Enter walks them, and the count is of the matches you can see: one
+  inside code is not offered, because the page cannot mark it.
 - **PDF search.** Find reads the page text and turns to the page the match is on.
 - **Code you can tidy.** Go and JSON go through the standard library. Other languages
   get spacing and indentation that never reaches inside a string or a comment.
@@ -40,11 +41,12 @@ on one screen and wrong on the other.
 
 ## The window
 
-The header carries the document's name, what the type model solved for this screen,
-and the commands. The two panels answer the two questions a reader has while
-reading — which file, and where in this file — and either can be folded away with
-⌘B or the header's toggle. Zen folds both panels and the status pill so the page
-has the whole window; the header stays, so the way out is where you left it.
+The header carries the document's name and what the type model solved for this
+screen: the measure, and the apparent size of a character. The two panels answer
+the two questions a reader has while reading — which file, and where in this file
+— and either can be folded away with ⌘B or the header's toggle. Zen folds both
+panels and the status pill so the page has the whole window; the header stays, so
+the way out is where you left it.
 
 The measure is the same promise in every state: 72 characters, or as many as the
 window can actually hold. The pill at the foot of the page reports the count, the
@@ -108,7 +110,8 @@ copy.
 muo/
 ├── pdf/       the PDF parser, interpreter and rasterizer, with no dependency on the app
 ├── code/      the code formatter and tab expansion
-├── fonts/     the page's serif, bundled so the measure is the same on every platform
+├── fonts/     the page's faces — Inter, and Newsreader as the alternative — bundled
+│              so the measure is the same on every platform
 └── *.go       the reader: frame, panels, header, pill, settings, theme, find
 ```
 

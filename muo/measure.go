@@ -113,7 +113,7 @@ func (r *Reader) headingBlock(c *ui.Context, d *parser.Document, i int, pal page
 		// highlight at all — the worst kind of bug, because the count said the
 		// search had worked.
 		text := ui.RichText(c, r.headingSpans(d, i, pal)...)
-		text.Font(pageFamily).FontSize(size).
+		text.Font(pageFamily()).FontSize(size).
 			FontWeight(headingWeight(b.Level)).
 			// Large type wants its letters closer, small type wants them
 			// further apart; one tracking value for every size is wrong at one
@@ -134,6 +134,16 @@ func (r *Reader) headingBlock(c *ui.Context, d *parser.Document, i int, pal page
 		row.ScrollIntoView()
 		r.jumpToBlock = -1
 	}
+	// Find has to be able to land on a heading as well.
+	//
+	// This hook used to run only for the blocks the renderer builds, because
+	// it lives in the option the renderer calls back from. A heading returns
+	// from that hook early — it is drawn here instead — so a match whose only
+	// home was a heading was counted, painted, and never scrolled to. That is
+	// exactly the "1 of 1, and nothing moved" case: the single match was the
+	// heading itself.
+	start, end := r.markShift(b.Start, b.End)
+	r.followFind(row, start, end)
 }
 
 // headingSpans splits a heading's words around the marks Find put in them.
@@ -184,27 +194,39 @@ func (r *Reader) headingSpans(d *parser.Document, i int, pal pagePalette) []ui.S
 // bold.
 func headingWeight(level int) int {
 	if level < 1 || level > 6 {
-		return headingWeights[5]
+		return headingWeights()[5]
 	}
-	return headingWeights[level-1]
+	return headingWeights()[level-1]
 }
 
 // headingScale is the one place the page's heading sizes live, in multiples of
-// the body size. It was copied in two places — the renderer's theme and the
-// reader's own heading drawing — and the two drifted the moment one was changed.
+// the body size.
 //
-// The shape is the design's: an article's title is much larger than what
-// follows, and the rest step down quickly, because a serif carries hierarchy at
-// a smaller size difference than a sans does. The scale stops at the body size
-// and never goes below it: a heading smaller than the paragraph it introduces
-// reads as a footnote, so past level four weight and space carry the hierarchy
-// and the size stays where the text is.
-var headingScale = [6]float32{2.35, 1.45, 1.22, 1.08, 1.0, 1.0}
+// The shape follows Typora's serif theme (newsprint.css), which is the closest
+// published reference for a serif Markdown page: a display title at 1.875×, a
+// shared second/third step at 1.3125×, a fourth at 1.125×, and the last two at
+// the body's own size. The previous table ran 2.35–1.0 in six steps, which made
+// a 39 pt title in a 72-character column and left three near-identical levels
+// at the bottom.
+var headingScale = [6]float32{1.875, 1.5, 1.25, 1.125, 1.0, 1.0}
 
-// headingWeights are the heading weights, likewise in one place. A serif at 700
-// is a slab of ink; 500 holds the hierarchy and keeps the page calm, which is
-// the posture the design asks for.
-var headingWeights = [6]int{500, 500, 500, 500, 500, 500}
+// headingWeights are the heading weights, likewise in one place.
+//
+// The numbers depend on the face, because weight is relative to it. A serif
+// carries hierarchy at a lighter weight than a sans: Newsreader at 600 still has
+// thin-stroke contrast, where Inter at 600 is a full step heavier than its
+// regular and reads as bold. The scale is therefore chosen per family — the
+// serif keeps 600 for its middle levels, the sans drops to 550, which is the
+// half-step Inter draws as a clear but unemphatic change.
+func headingWeightsFor(family string) [6]int {
+	if family == familyInter {
+		return [6]int{700, 600, 550, 550, 550, 500}
+	}
+	return [6]int{400, 600, 400, 600, 600, 400}
+}
+
+// headingWeights is the current face's heading weights.
+func headingWeights() [6]int { return headingWeightsFor(pageFamilyName) }
 
 // headingPx is a heading's type size, from the body size: the page's hierarchy
 // stays proportional as the reader changes size.

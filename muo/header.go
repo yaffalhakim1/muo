@@ -104,7 +104,7 @@ func (r *Reader) emptyHeaderLeading(c *ui.Context, left bool) {
 		if b := headerButton(c, iconSidebar, label, left); b.Clicked() {
 			r.toggleLibrary(c)
 		}
-		ui.Text(c, "Muo").Font(pageFamily).Italic().FontSize(15).
+		ui.Text(c, "Muo").Font(pageFamily()).Italic().FontSize(15).
 			LetterSpacing(0.2).TextColor(t.Text).SingleLine()
 	})
 }
@@ -151,20 +151,18 @@ func (r *Reader) headerMeta(c *ui.Context) {
 	ui.Row(c).Gap(t.Space(1.5)).AlignItems(ui.Center).Shrink(0).
 		Label("Reading metadata").
 		Description(fmt.Sprintf(
-			"%.0f characters per line, an apparent character height of %.2f degrees, about %d minutes to read.",
-			r.typ.ChPerLine, r.typ.Angle, r.readingMinutes())).
+			"%.0f characters per line, an apparent character height of %.2f degrees.",
+			r.typ.ChPerLine, r.typ.Angle)).
 		Children(func() {
+			// The measure is the promise, and the angle is the evidence for it.
+			// A read-time used to sit third here, counted from the source's
+			// whitespace — which counts code, table cells and link targets as
+			// prose, so on a document with 70 code blocks it reported a number
+			// with no meaning. Two facts about the type are a claim; three,
+			// where the third is wrong, is a header nobody reads.
 			metaText(c, fmt.Sprintf("%.0fch", r.typ.ChPerLine))
 			metaDot(c)
 			metaText(c, fmt.Sprintf("%.2f° angle", r.typ.Angle))
-			metaDot(c)
-			// Before a document is open there is nothing to time, so the third
-			// item says what the window is rather than how long the page is.
-			if r.doc == nil || r.doc.Err != "" {
-				metaText(c, "calibrated space")
-				return
-			}
-			metaText(c, fmt.Sprintf("%d min read", r.readingMinutes()))
 		})
 }
 

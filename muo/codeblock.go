@@ -35,30 +35,36 @@ func (r *Reader) codeBlockView(c *ui.Context, b *markdown.CodeBlockView) {
 		ui.Row(c).AlignItems(ui.Center).Gap(t.Space(0.5)).
 			Padding(t.Space(1.5), t.Space(2), t.Space(1), t.Space(3)).
 			Children(func() {
-				label := b.Language
-				if label == "" {
-					label = "Code"
+				// A fence the author did not tag gets no label at all. Writing
+				// "CODE" over a block of code says nothing the block does not
+				// already say, and it puts a placeholder where every other
+				// block has a fact.
+				if b.Language != "" {
+					ui.Text(c, strings.ToUpper(b.Language)).
+						FontSize(typeFootnote).FontWeight(600).LetterSpacing(0.5).
+						TextColor(t.TextMuted).Grow(1).SingleLine()
+				} else {
+					ui.Spacer(c)
 				}
-				ui.Text(c, strings.ToUpper(label)).
-					FontSize(typeFootnote).FontWeight(600).LetterSpacing(0.5).
-					TextColor(t.TextMuted).Grow(1).SingleLine()
-				// The two commands are quiet: they carry no face of their own,
-				// so the block reads as one surface with a label rather than as
-				// a box with a toolbar screwed to the top of it.
-				format := ui.Button(c, "Format").FontSize(typeCallout).
-					Padding(2, 8).Radius(5).
-					Background(ui.Transparent).BorderWidth(0).
-					TextColor(t.TextMuted)
-				if format.Hovered() {
-					format.Background(t.SurfaceHover)
-				}
-				// A language with no formatter does not offer the command at
-				// all: a button that can only ever say "no" is not a command.
-				if !code.HasFormatter(b.Language) {
-					format.Disabled(true).Opacity(0.45)
-				}
-				if format.Clicked() {
-					r.formatBlock(c, b)
+				// The commands are quiet: they carry no face of their own, so
+				// the block reads as one surface with a label rather than as a
+				// box with a toolbar screwed to the top of it.
+				//
+				// Format is built only for a language the app can tidy. A
+				// disabled button that can never be pressed is not a command,
+				// and it is not a hint either: it is a thing on the page that
+				// does nothing, on a block the reader did not ask about.
+				if code.HasFormatter(b.Language) {
+					format := ui.Button(c, "Format").FontSize(typeCallout).
+						Padding(2, 8).Radius(5).
+						Background(ui.Transparent).BorderWidth(0).
+						TextColor(t.TextMuted)
+					if format.Hovered() {
+						format.Background(t.SurfaceHover)
+					}
+					if format.Clicked() {
+						r.formatBlock(c, b)
+					}
 				}
 				// The renderer's own Copy button, so the copy path stays its own.
 				b.CopyButton(c)

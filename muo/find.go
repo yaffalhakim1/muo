@@ -95,15 +95,21 @@ func (r *Reader) findBar(c *ui.Context) {
 		return
 	}
 	matches := r.matches()
-	if len(matches) > 0 {
-		if r.match < 0 || r.match >= len(matches) {
+	// The bar counts what the page can show. A PDF marks every match it finds,
+	// so it counts them all.
+	count := len(matches)
+	if r.doc.Format != FormatPDF {
+		count = r.paintableMatches()
+	}
+	if count > 0 {
+		if r.match < 0 || r.match >= count {
 			r.match = 0
 		}
 	} else {
 		r.match = 0
 	}
 	ui.Row(c).Grow(1).MaxWidth(560).Children(func() {
-		bar := ui.FindBar(c, &r.finding, &r.query, len(matches), &r.match)
+		bar := ui.FindBar(c, &r.finding, &r.query, count, &r.match)
 		// The bar is the app's, not the toolkit's default: it sits on the page's
 		// own paper with the page's rule, so a search is something the page does
 		// rather than a control pasted over it.
@@ -116,16 +122,22 @@ func (r *Reader) findBar(c *ui.Context) {
 	}
 	// The bar moved the choice: the page follows it.
 	//
-	// The request is made whenever the match changes, and also when the reader has
-	// scrolled the page away from where Find left it — otherwise Previous, which
-	// lands on the match the page was last scrolled to, would appear to do
-	// nothing on the way back. It is not made every frame, which would fight the
-	// reader's own scrolling.
+	// The request is made whenever the chosen match changes, and also when the
+	// reader has scrolled the page away from where Find left it — otherwise
+	// Previous, which lands on the match the page was last scrolled to, would
+	// appear to do nothing on the way back. It is not made every frame, which
+	// would fight the reader's own scrolling.
+	//
+	// The first request is made even when the choice has not changed, which is
+	// the case a query with a single match falls into: there is nowhere to move
+	// to, so `match` stays 0 and an equality test on it never fires. Typing a
+	// query that matches once and pressing Enter did nothing, because nothing
+	// had asked the page to go anywhere.
 	//
 	// The bar is drawn after the page in a frame, so a request made here is served
 	// by the next frame's hook, not this one.
-	if len(matches) > 0 {
-		if r.match != r.shownMatch || r.scrollMoved() {
+	if count > 0 {
+		if r.match != r.shownMatch || r.scrollMoved() || r.shownMatch < 0 {
 			r.shownMatch = r.match
 			r.pendingScroll = true
 			r.askFrame()
@@ -163,11 +175,60 @@ func (r *Reader) matches() []int {
 		return r.matchList
 	}
 	r.matchList = findMatches(r.doc.Source, r.query)
+	// Which of them the page can paint. A match inside a fence or an inline
+	// span is counted but never marked, because marking it would show the tags
+	// themselves. Counting those against the bar's "1 of 2" made a search look
+	// broken: the reader walks to a match and finds nothing lit, because the
+	// match is in code and the page cannot show it.
+	skip := unmarkable(r.doc.Source)
+	r.matchPaintable = make([]bool, len(r.matchList))
+	for i, at := range r.matchList {
+		r.matchPaintable[i] = !overlaps(skip, at, at+len(r.query))
+	}
 	r.matchQuery = r.query
 	r.matchSource = r.doc.Source
 	r.shownMatch = -1
 	r.pendingScroll = false
 	return r.matchList
+}
+
+// paintableMatches is how many of the current matches the page can actually
+// mark. The bar counts these, because a match a reader cannot see is not a
+// match they can walk to.
+func (r *Reader) paintableMatches() int {
+	n := 0
+	for _, ok := range r.matchPaintable {
+		if ok {
+			n++
+		}
+	}
+	return n
+}
+
+// matchAt is the source offset of the chosen match.
+//
+// The bar's choice counts only matches the page can paint, because those are the
+// ones it offers. The offsets list holds every occurrence, including the ones in
+// code, so the chosen index has to be translated: walking it directly would land
+// on a fence every time one sits between two visible matches.
+func (r *Reader) matchAt(chosen int) (int, bool) {
+	if chosen < 0 || len(r.matchPaintable) == 0 {
+		return 0, false
+	}
+	seen := 0
+	for i, ok := range r.matchPaintable {
+		if !ok {
+			continue
+		}
+		if seen == chosen {
+			if i >= len(r.matchList) {
+				return 0, false
+			}
+			return r.matchList[i], true
+		}
+		seen++
+	}
+	return 0, false
 }
 
 // pdfMatchOffsets is the PDF's matches as indices into a list, so that the bar
@@ -206,17 +267,15 @@ func (r *Reader) followFind(row ui.Element, start, end int) {
 	if !r.pendingScroll || !r.finding {
 		return
 	}
-	matches := r.matches()
-	if r.match < 0 || r.match >= len(matches) {
+	at, ok := r.matchAt(r.match)
+	if !ok {
 		return
 	}
-	at := matches[r.match]
 	if at < start || at >= end {
 		return
 	}
 	r.pendingScroll = false
-	row.ScrollIntoView()
-	// Where the scroll is headed, remembered so that a later Previous to the same
+	row.ScrollIntoView()	// Where the scroll is headed, remembered so that a later Previous to the same
 	// match knows whether the reader has moved the page since.
 	r.contentScrollAt = r.contentScroll.Y + 1
 	// The request is served; a frame is needed for the layout engine to move the

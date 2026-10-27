@@ -36,7 +36,7 @@ func (r *Reader) welcome(c *ui.Context, pal pagePalette) {
 			AlignItems(ui.Center).Children(func() {
 			// The wordmark is set large, in the page's serif, at the weight a
 			// title takes: the name of the thing, before any explanation of it.
-			ui.Text(c, "Muo").Font(pageFamily).FontSize(52).FontWeight(400).
+			ui.Text(c, "Muo").Font(pageFamily()).FontSize(52).FontWeight(400).
 				LetterSpacing(-1.2).TextColor(pal.inkColor()).
 				TextAlign(ui.Center)
 
@@ -44,7 +44,7 @@ func (r *Reader) welcome(c *ui.Context, pal pagePalette) {
 			// claim about the app rather than a label, and the italic is what
 			// separates a claim from an instruction.
 			ui.Text(c, "A page sized to the screen you are on, and to how far you sit from it.").
-				Font(pageFamily).FontSize(19).Italic().LineHeight(1.55).
+				Font(pageFamily()).FontSize(19).Italic().LineHeight(1.55).
 				TextColor(pal.mutedColor()).MaxWidth(welcomeMeasure - 60).
 				TextAlign(ui.Center).Margin(0, 0, t.Space(6), 0)
 

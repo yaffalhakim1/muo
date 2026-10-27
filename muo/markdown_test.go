@@ -177,17 +177,19 @@ func TestNothingOverflowsTheColumn(t *testing.T) {
 }
 
 // A fenced block says its language, in the small caps the header gives it, and
-// an unlabelled one says "Code" rather than showing nothing at all.
+// an unlabelled one says nothing: "CODE" over a block of code is a placeholder
+// where every other block has a fact, and it is not a language.
 func TestCodeBlockHeaderNamesTheLanguage(t *testing.T) {
 	r := openString(t, "code.md", "```go\nfunc main() {}\n```\n\n```\nplain\n```\n")
 	tt := ui.NewTester(r.FrameView, 1000, 900)
 	tt.Frame()
 	tt.Frame()
 
-	for _, want := range []string{"GO", "CODE"} {
-		if !tt.HasText(want) {
-			t.Errorf("the code block header does not say %q", want)
-		}
+	if !tt.HasText("GO") {
+		t.Error("a go fence does not name its language")
+	}
+	if tt.HasText("CODE") {
+		t.Error("an untagged fence still draws a \"CODE\" placeholder label")
 	}
 }
 

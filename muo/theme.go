@@ -137,8 +137,24 @@ func ShellTheme(c *ui.Context) *ui.Theme {
 	t.InverseText = p.paper
 	t.Scrollbar = p.ink.Alpha(0.2)
 	t.Radius = 6
+	// The chrome's face. Empty is the system's interface font, which is what a
+	// native control should be set in; a reader who wants the newsprint reading
+	// sets it to the page's own family, so the whole window is one voice.
+	if chromeFamily != "" {
+		t.Font = chromeFamily
+	}
 	return &t
 }
+
+// chromeFamily is the family the chrome is set in: the sidebar, the panels, the
+// menus. Empty follows the desktop's interface font.
+//
+// Typora's own themes split here rather than anywhere else. Its serif theme sets
+// `header, .context-menu, .megamenu-content, footer` to PT Serif — the same face
+// as the page — while its sans themes set the same selectors to Segoe UI. Both
+// are defensible: a serif chrome reads as a book with a contents page, a sans
+// chrome reads as an app showing a document.
+var chromeFamily = ""
 
 // comfortColor is the tint the type readout carries: the model's grade of the
 // apparent size, so the one number the app computes says whether it landed

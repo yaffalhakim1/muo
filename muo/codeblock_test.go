@@ -1,8 +1,6 @@
 package muo
 
 import (
-	"image/png"
-	"os"
 	"strings"
 	"testing"
 
@@ -29,9 +27,20 @@ func TestFormatBlockRewritesTheSource(t *testing.T) {
 	if !strings.HasPrefix(r.doc.Source, "# T") {
 		t.Fatal("the rest of the document was lost")
 	}
-	f, _ := os.Create("Y:/Learn/Go/muo/capture-code.png")
-	defer f.Close()
-	png.Encode(f, tt.Image())
 }
 
+// A fence with no language has nothing for the app to tidy, so the block must
+// not offer the command at all. It used to draw a Format button that could only
+// ever be disabled — a control on the page that does nothing, on roughly half
+// the code blocks in a real document.
+func TestUntaggedFenceOffersNoFormatCommand(t *testing.T) {
+	src := "# T\n\n```\nno language here\n```\n"
+	r := New()
+	r.doc = &Document{Format: FormatMarkdown, Source: src, Title: "t.md"}
+	tt := ui.NewTester(r.FrameView, 900, 600)
+	tt.Frame()
 
+	if err := tt.Click("Format"); err == nil {
+		t.Fatal("an untagged fence drew a Format button")
+	}
+}

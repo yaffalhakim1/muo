@@ -41,6 +41,10 @@ type Reader struct {
 	// What the find bar's count was made from, so that it is counted again
 	// only when the query or the document changed.
 	matchList   []int
+	// matchPaintable records, per match, whether the page can mark it. A match
+	// inside code is counted but not painted, so the bar shows the paintable
+	// count rather than a number the reader cannot walk through.
+	matchPaintable []bool
 	matchQuery  string
 	matchSource string
 	shownMatch  int // the match the page was last scrolled to, -1 for none
@@ -73,6 +77,10 @@ type Reader struct {
 	// Handles, not elements, carry a heading's rectangle across frames.
 	contentScroll  ui.ScrollState
 	column         ui.Handle
+	// lastColumn is where the reading column was laid out in the last frame.
+	// The tests measure the page through it, since a column's rect is only
+	// available from inside a context and they have no context of their own.
+	lastColumn     ui.Rect
 	headingHandles map[int]ui.Handle
 	// showLibrary is whether the left pane — the list of open files — is on
 	// screen. showOutline is the right pane, which is the document's own
@@ -461,7 +469,7 @@ func (r *Reader) recompute(c *ui.Context) {
 	}
 	// The column is solved in the family the page is drawn in, so the measure
 	// the readout reports is the one the reader is actually looking at.
-	r.typ = Model(*d, pageW, r.ppiFor(w), pageFamily, manual)
+	r.typ = Model(*d, pageW, r.ppiFor(w), pageFamily(), manual)
 }
 
 // ppiFor estimates the density the window is drawn at. MyGo reports DIPs, so
@@ -471,18 +479,30 @@ func (r *Reader) recompute(c *ui.Context) {
 // them all.
 func (r *Reader) ppiFor(w *mygo.Window) float64 { return 96 * displayScale(w) }
 
+// displayScale is how many device pixels the platform draws one DIP at, for the
+// monitor the window is on.
+//
+// It used to be inferred from the work area's width, in three bands. That is a
+// guess where a measurement is available: MyGo reports each display's own
+// ScaleFactor (GetDpiForMonitor's effective DPI on Windows, backingScaleFactor
+// on macOS, the GDK monitor scale on Linux), which is the number the platform
+// itself uses to lay the window out.
+//
+// The bands were wrong in both directions. A 4K 27" at 150% reports a work area
+// near 2560 DIPs and a ScaleFactor of 1.5, and the width rule called it 1.0 — so
+// the type model solved for a display pixel twice as large as the one on the
+// desk, and the angle it reported was computed from that. Reading the reported
+// scale cannot drift that way, and it is the same value the OS uses to decide
+// how big a DIP is, which is exactly the question the model is asking.
 func displayScale(w *mygo.Window) float64 {
 	if w == nil {
 		return 1
 	}
 	d := mygo.Screen.DisplayMatching(mygo.Rectangle(w.Bounds()))
-	switch {
-	case d.WorkArea.Width > 2200:
-		return 1
-	case d.WorkArea.Width > 1400:
-		return 1.5
+	if d.ScaleFactor > 0 {
+		return d.ScaleFactor
 	}
-	return 2
+	return 1
 }
 
 
